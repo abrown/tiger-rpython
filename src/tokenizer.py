@@ -17,25 +17,32 @@ class Token:
         return "%s%s at %s" % (self.__class__.__name__, "=" + self.value if self.value else "", self.location)
 
 
-class EofToken(Token): pass
+class EofToken(Token):
+    pass
 
 
-class EolToken(Token): pass
+class EolToken(Token):
+    pass
 
 
-class NumberToken(Token): pass
+class NumberToken(Token):
+    pass
 
 
-class IdentifierToken(Token): pass
+class IdentifierToken(Token):
+    pass
 
 
-class KeywordToken(Token): pass
+class KeywordToken(Token):
+    pass
 
 
-class SymbolToken(Token): pass
+class SymbolToken(Token):
+    pass
 
 
-class StringToken(Token): pass
+class StringToken(Token):
+    pass
 
 
 class TokenError(Exception):
@@ -148,7 +155,7 @@ class Tokenizer:
     def is_keyword(s):
         return s in ['array', 'if', 'then', 'else', 'while', 'for', 'to', 'do', 'let', 'in', 'end', 'of', 'break',
                      'nil', 'function', 'var', 'type', 'import', 'primitive',
-                     'class', 'extends', 'method', 'new' # object-related extension
+                     'class', 'extends', 'method', 'new'  # object-related extension
                      ]
 
     def __comment(self):
@@ -202,7 +209,10 @@ class Tokenizer:
                 else:
                     TokenError('Invalid escaped character within string: ' + d, self.current_location())
             elif c == '"':
+                self.__advance()
                 break
+            else:
+                s.append(c)
         return ''.join(s)
 
     def __number(self):
@@ -265,10 +275,10 @@ class Tokenizer:
             c = self.__advance()
         return c
 
-    # def __advance_until(self, match):
-    #     c = self.__read()
-    #     while c != '' and c:
-    #         value += c
-    #         c = self.__read()
-    #     if c != '': self.__unread()
-    #     return value
+        # def __advance_until(self, match):
+        #     c = self.__read()
+        #     while c != '' and c:
+        #         value += c
+        #         c = self.__read()
+        #     if c != '': self.__unread()
+        #     return value
