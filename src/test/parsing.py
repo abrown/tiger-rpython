@@ -22,6 +22,8 @@ class TestParsing(unittest.TestCase):
     def test_array_creation(self):
         self.assertParsesTo('int[10] of 0', ArrayCreation(TypeId('int'), IntegerValue(10), IntegerValue(0)))
 
+    def test_record_creation(self):
+        self.assertParsesTo('A{b = 42, c = d}', RecordCreation(TypeId('A'), {'b': IntegerValue(42), 'c': LValue('d')}))
 
 if __name__ == '__main__':
     unittest.main()

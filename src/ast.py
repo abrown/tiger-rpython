@@ -57,7 +57,15 @@ class ArrayCreation(Exp):
         self.inner = inner
         self.type = type
 
+class RecordCreation(Exp):
+    def __init__(self, type, fields):
+        self.type = type
+        self.fields = fields
 
 class TypeId(Dec):
+    def __init__(self, name):
+        self.name = name
+
+class LValue(Exp):
     def __init__(self, name):
         self.name = name

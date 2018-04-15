@@ -1,4 +1,4 @@
-from src.ast import Program, NilValue, IntegerValue, StringValue, ArrayCreation, TypeId
+from src.ast import Program, NilValue, IntegerValue, StringValue, ArrayCreation, TypeId, RecordCreation, LValue
 from src.tokenizer import Tokenizer
 from src.tokens import NumberToken, IdentifierToken, KeywordToken, SymbolToken, StringToken
 
@@ -31,25 +31,27 @@ class Parser:
         token = self.next()
         if self.accept(token, KeywordToken('nil')):
             return NilValue()
-        elif self.accept_type(token, NumberToken):
+        elif self.accept(token, NumberToken):
             return IntegerValue(token.value)
-        elif self.accept_type(token, StringToken):
+        elif self.accept(token, StringToken):
             return StringValue(token.value)
-        elif self.accept_type(token, IdentifierToken):
+        elif self.accept_and_remember(token, IdentifierToken):
             return self.id_started()
         else:
-            raise ParseError('Unable to parse', self.next())
+            raise ParseError('Unable to parse', token)
 
     def id_started(self):
         token = self.next()
-        if self.accept(token, SymbolToken('[')):
+        if self.accept_and_remember(token, SymbolToken('[')):
             return self.array()
-        elif self.accept(token, SymbolToken('{')):
+        elif self.accept_and_remember(token, SymbolToken('{')):
             return self.record()
-        elif self.accept(token, SymbolToken('(')):
+        elif self.accept_and_remember(token, SymbolToken('(')):
             return self.function_call()
         else:
-            raise ParseError('Unable to parse', self.next())
+            self.remember(token)
+            id = self.next_or_accepted()
+            return LValue(id.value)
 
     def array(self):
         type = self.next_or_accepted()
@@ -59,6 +61,29 @@ class Parser:
         self.expect(self.next(), KeywordToken('of'))
         exp2 = self.expression()
         return ArrayCreation(TypeId(type.value), exp1, exp2)
+
+    def record(self):
+        type = self.expect(self.next_or_accepted(), IdentifierToken)
+        self.expect(self.next_or_accepted(), SymbolToken('{'))
+        fields = {}
+        token = self.next()
+        while self.accept_and_remember(token, IdentifierToken):
+            id, exp = self.id_field()
+            fields[id.value] = exp
+            token2 = self.next_or_accepted()
+            if token2 == SymbolToken(','):
+                token = self.next()
+            elif token2 == SymbolToken('}'):
+                break
+            else:
+                raise ParseError('Expected either , or }', token2)
+        return RecordCreation(TypeId(type.value), fields)
+
+    def id_field(self):
+        id = self.expect(self.next_or_accepted(), IdentifierToken)
+        self.expect(self.next(), SymbolToken('='))
+        exp = self.expression()
+        return id, exp
 
     # navigation methods TODO make private
 
@@ -72,22 +97,25 @@ class Parser:
         else:
             return self.next()
 
-    def accept(self, token, expected):
-        if expected == token:
-            self.accepted.append(token)
-            return True
-        else:
-            return False
+    def remember(self, token):
+        self.accepted.append(token)
 
-    def accept_type(self, token, type):
-        if isinstance(token, type):
-            self.accepted.append(token)
+    def accept_and_remember(self, token, expected):
+        accepted = self.accept(token, expected)
+        if accepted:
+            self.remember(token)
+        return accepted
+
+    def accept(self, token, expected):
+        if (isinstance(expected, type) and isinstance(token, expected)) or expected == token:
             return True
         else:
             return False
 
     def expect(self, token, expected):
-        if self.accept(token, expected):
+        if isinstance(expected, type) and isinstance(token, expected):
+            return token
+        elif expected == token:
             return token
         else:
             raise ExpectationError(expected, token)
