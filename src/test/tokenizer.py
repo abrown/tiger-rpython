@@ -1,6 +1,7 @@
 import unittest
 
 from src.tokenizer import *
+from src.tokens import NumberToken, IdentifierToken, SymbolToken, StringToken
 
 
 class TestTokenizer(unittest.TestCase):

@@ -1,3 +1,6 @@
+from src.tokens import NumberToken, IdentifierToken, KeywordToken, SymbolToken, StringToken
+
+
 class Location:
     def __init__(self, offset, line, file):
         self.offset = offset
@@ -6,43 +9,6 @@ class Location:
 
     def __repr__(self):
         return "%s:%s" % (self.file if self.file else "<code string>", self.line)
-
-
-class Token:
-    def __init__(self, value=None, location=None):
-        self.value = value
-        self.location = location
-
-    def __repr__(self):
-        return "%s%s at %s" % (self.__class__.__name__, "=" + self.value if self.value else "", self.location)
-
-
-class EofToken(Token):
-    pass
-
-
-class EolToken(Token):
-    pass
-
-
-class NumberToken(Token):
-    pass
-
-
-class IdentifierToken(Token):
-    pass
-
-
-class KeywordToken(Token):
-    pass
-
-
-class SymbolToken(Token):
-    pass
-
-
-class StringToken(Token):
-    pass
 
 
 class TokenError(Exception):
