@@ -67,6 +67,7 @@ class Tokenizer:
                 if c == '<' and d in '>=':
                     return SymbolToken(c + d, location)
                 elif c in '>:' and d == '=':
+                    self.__advance()
                     return SymbolToken(c + d, location)
                 else:
                     return SymbolToken(c, location)

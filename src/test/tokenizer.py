@@ -28,6 +28,9 @@ class TestTokenizer(unittest.TestCase):
     def test_string(self):
         self.assertTokenizesTo(' "a \\" \t" ', [StringToken('a " \t')])
 
+    def test_assign(self):
+        self.assertTokenizesTo('a := b', [IdentifierToken('a'), SymbolToken(':='), IdentifierToken('b')])
+
 
 if __name__ == '__main__':
     unittest.main()

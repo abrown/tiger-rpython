@@ -1,5 +1,7 @@
 import unittest
 
+from _ast import Break
+
 from src.parser import *
 
 
@@ -66,6 +68,24 @@ class TestParsing(unittest.TestCase):
 
     def test_method_call_on_array(self):
         self.assertParsesTo('a[b].c()', MethodCall(LValue('a', ArrayLValue(LValue('b'))), 'c', []))
+
+    def test_assignment(self):
+        self.assertParsesTo('a[0] := b.c()',
+                            Assign(LValue('a', ArrayLValue(IntegerValue(0))), MethodCall(LValue('b'), 'c', [])))
+
+    def test_if(self):
+        self.assertParsesTo('if a() then b', If(FunctionCall('a', []), LValue('b')))
+
+    def test_while(self):
+        self.assertParsesTo('while true do b[i] := 0',
+                            While(LValue('true'), Assign(LValue('b', ArrayLValue(LValue('i'))), IntegerValue(0))))
+
+    def test_for(self):
+        self.assertParsesTo('for a := 0 to 10 do x()',
+                            For('a', IntegerValue(0), IntegerValue(10), FunctionCall('x', [])))
+
+    def test_break(self):
+        self.assertParsesTo('break', Break())
 
 
 if __name__ == '__main__':

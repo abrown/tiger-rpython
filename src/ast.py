@@ -107,3 +107,34 @@ class Assign(Exp):
     def __init__(self, lvalue, exp):
         self.lvalue = lvalue
         self.exp = exp
+
+
+class If(Exp):
+    def __init__(self, condition, body_if_true, body_if_false=None):
+        self.condition = condition
+        self.body_if_true = body_if_true
+        self.body_if_false = body_if_false
+
+
+class While(Exp):
+    def __init__(self, condition, body):
+        self.condition = condition
+        self.body = body
+
+
+class For(Exp):
+    def __init__(self, var, start, end, body):
+        self.var = var
+        self.start = start
+        self.end = end
+        self.body = body
+
+
+class Break(Exp):
+    pass
+
+
+class Let(Exp):
+    def __init__(self, declarations, expressions):
+        self.declarations = declarations
+        self.expressions = expressions
