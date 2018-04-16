@@ -62,13 +62,14 @@ class Tokenizer:
                 else:
                     return IdentifierToken(value, location)
             elif self.is_symbol(c):
+                location = self.current_location()
                 d = self.__advance()
                 if c == '<' and d in '>=':
-                    return SymbolToken(c + d)
+                    return SymbolToken(c + d, location)
                 elif c in '>:' and d == '=':
-                    return SymbolToken(c + d)
+                    return SymbolToken(c + d, location)
                 else:
-                    return SymbolToken(c)
+                    return SymbolToken(c, location)
             else:
                 raise TokenError('Invalid character: ' + c, self.current_location())
             c = self.__advance()

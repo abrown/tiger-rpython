@@ -57,15 +57,53 @@ class ArrayCreation(Exp):
         self.inner = inner
         self.type = type
 
+
 class RecordCreation(Exp):
     def __init__(self, type, fields):
         self.type = type
         self.fields = fields
 
+
+class ObjectCreation(Exp):
+    def __init__(self, type):
+        self.type = type
+
+
 class TypeId(Dec):
     def __init__(self, name):
         self.name = name
 
+
 class LValue(Exp):
-    def __init__(self, name):
+    def __init__(self, name, next=None):
         self.name = name
+        self.next = next
+
+
+class RecordLValue(LValue):
+    pass
+
+
+class ArrayLValue(LValue):
+    def __init__(self, exp, next=None):
+        self.exp = exp
+        self.next = next
+
+
+class FunctionCall(Exp):
+    def __init__(self, name, args):
+        self.name = name
+        self.args = args
+
+
+class MethodCall(Exp):
+    def __init__(self, instance, name, args):
+        self.instance = instance
+        self.name = name
+        self.args = args
+
+
+class Assign(Exp):
+    def __init__(self, lvalue, exp):
+        self.lvalue = lvalue
+        self.exp = exp
