@@ -1,6 +1,6 @@
 from src.ast import NilValue, IntegerValue, StringValue, ArrayCreation, TypeId, RecordCreation, LValue, \
-    ObjectCreation, FunctionCall, RecordLValue, ArrayLValue, Assign, MethodCall, If, While, For, Break, Let, \
-    TypeDeclaration, ArrayType, VariableDeclaration, FunctionDeclaration, RecordType
+    ObjectCreation, FunctionCall, RecordLValue, ArrayLValue, Assign, If, While, For, Break, Let, \
+    TypeDeclaration, ArrayType, VariableDeclaration, FunctionDeclaration, RecordType, Sequence
 from src.tokenizer import Tokenizer
 from src.tokens import NumberToken, IdentifierToken, KeywordToken, SymbolToken, StringToken
 
@@ -39,6 +39,8 @@ class Parser:
             return IntegerValue(token.value)
         elif self.accept(token, StringToken):
             return StringValue(token.value)
+        elif self.accept_and_remember(token, SymbolToken('(')):
+            return self.sequence()
         elif self.accept_and_remember(token, IdentifierToken):
             return self.id_started()
         elif self.accept_and_remember(token, KeywordToken('new')):
@@ -312,6 +314,22 @@ class Parser:
 
     def import_declaration(self):
         raise NotImplementedError
+
+    def sequence(self):
+        exps = []
+        self.expect(self.next_or_remembered(), SymbolToken('('))
+        token = self.next_or_remembered()
+        if token != SymbolToken(')'):
+            self.remember(token)
+            exp = self.expression()
+            exps.append(exp)
+            token = self.next_or_remembered()
+            while self.accept(token, SymbolToken(';')):
+                exp = self.expression()
+                exps.append(exp)
+                token = self.next_or_remembered()
+        self.expect(token, SymbolToken(')'))
+        return Sequence(exps)
 
     # navigation methods TODO make private
 

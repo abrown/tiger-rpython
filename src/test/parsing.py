@@ -85,7 +85,7 @@ class TestParsing(unittest.TestCase):
 
     def test_empty_function_declaration(self):
         self.assertParsesTo('function x() = noop', FunctionDeclaration('x', {}, None, LValue('noop')))
-                                            
+
     def test_function_declaration(self):
         self.assertParsesTo('function x(y:int, z:int):int = add(y, z)',
                             FunctionDeclaration('x', {'y': TypeId('int'), 'z': TypeId('int')}, TypeId('int'),
@@ -100,6 +100,16 @@ class TestParsing(unittest.TestCase):
 
     def test_type_declaration_with_array(self):
         self.assertParsesTo('type treelist = array of tree', TypeDeclaration('treelist', ArrayType('tree')))
+
+    def test_empty_sequence(self):
+        self.assertParsesTo('()', Sequence([]))
+
+    def test_single_item_sequence(self):
+        self.assertParsesTo('(42)', Sequence([IntegerValue(42)]))
+
+    def test_multiple_item_sequence(self):
+        self.assertParsesTo('(a := 1; b := 2)',
+                            Sequence([Assign(LValue('a'), IntegerValue(1)), Assign(LValue('b'), IntegerValue(2))]))
 
 
 if __name__ == '__main__':

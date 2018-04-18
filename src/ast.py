@@ -165,7 +165,12 @@ class ArrayType(Declaration):
     def __init__(self, element_type):
         self.type_name = element_type
 
+
 class RecordType(Declaration):
     def __init__(self, type_fields):
         self.type_fields = type_fields
 
+
+class Sequence(Exp):
+    def __init__(self, expressions):
+        self.expressions = expressions
