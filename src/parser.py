@@ -1,5 +1,6 @@
 from src.ast import NilValue, IntegerValue, StringValue, ArrayCreation, TypeId, RecordCreation, LValue, \
-    ObjectCreation, FunctionCall, RecordLValue, ArrayLValue, Assign, MethodCall, If, While, For, Break, Let
+    ObjectCreation, FunctionCall, RecordLValue, ArrayLValue, Assign, MethodCall, If, While, For, Break, Let, \
+    TypeDeclaration, ArrayType, VariableDeclaration, FunctionDeclaration, RecordType
 from src.tokenizer import Tokenizer
 from src.tokens import NumberToken, IdentifierToken, KeywordToken, SymbolToken, StringToken
 
@@ -52,6 +53,12 @@ class Parser:
             return Break()
         elif self.accept_and_remember(token, KeywordToken('let')):
             return self.let()
+        elif self.accept_and_remember(token, KeywordToken('type')):
+            return self.type_declaration()
+        elif self.accept_and_remember(token, KeywordToken('var')):
+            return self.variable_declaration()
+        elif self.accept_and_remember(token, KeywordToken('function')):
+            return self.function_declaration()
         else:
             raise ParseError('Unable to parse', token)
 
@@ -71,8 +78,6 @@ class Parser:
         if self.accept(token, SymbolToken(':=')):
             exp = self.expression()
             return Assign(lvalue, exp)
-        elif self.accept_and_remember(token, SymbolToken('(')):
-            return self.method_call(lvalue)
         elif self.accept_and_remember(token, KeywordToken('of')):
             return self.array_from_lvalue(lvalue)
         else:
@@ -125,21 +130,6 @@ class Parser:
         args = self.args()
         return FunctionCall(function_id.value, args)
 
-    def method_call(self, lvalue=None):
-        lvalue = lvalue or self.lvalue()
-        m = lvalue  # penultimate id
-        n = lvalue.next  # last id
-        while n is not None:
-            if n.next is None:
-                m.next = None
-                assert isinstance(n, RecordLValue)
-                break
-            else:
-                m = n
-                n = n.next
-        args = self.args()
-        return MethodCall(lvalue, n.name, args)
-
     def args(self):
         self.expect(self.next_or_remembered(), SymbolToken('('))
         args = []
@@ -152,7 +142,7 @@ class Parser:
             while token == SymbolToken(','):
                 exp = self.expression()
                 args.append(exp)
-                token = self.next()
+                token = self.next_or_remembered()
             self.expect(token, SymbolToken(')'))
 
         return args
@@ -235,14 +225,10 @@ class Parser:
         if self.accept_and_remember(token, KeywordToken):
             if token.value == 'type':
                 return self.type_declaration()
-            elif token.value == 'class':
-                return self.class_declaration()
             elif token.value == 'var':
                 return self.variable_declaration()
             elif token.value == 'function':
                 return self.function_declaration()
-            elif token.value == 'primitive':
-                return self.primitive_declaration()
             elif token.value == 'import':
                 return self.import_declaration()
             else:
@@ -253,52 +239,23 @@ class Parser:
 
     def type_declaration(self):
         self.expect(self.next_or_remembered(), KeywordToken('type'))
-        id = self.expect(self.next_or_remembered(), IdentifierToken)
+        id = self.expect_id(self.next_or_remembered())
         self.expect(self.next(), SymbolToken('='))
         ty = self.type()
-        return TypeDeclaration(id.value, ty)
+        return TypeDeclaration(id, ty)
 
     def type(self):
         token = self.next_or_remembered()
         if self.accept(token, IdentifierToken):
             return TypeId(token.value)
         elif self.accept(token, SymbolToken('{')):
-            return self.type_fields()
+            return RecordType(self.type_fields())
         elif self.accept(token, KeywordToken('array')):
             self.expect(self.next(), KeywordToken('of'))
             id = self.expect(self.next(), IdentifierToken)
             return ArrayType(id.value)
-        elif self.accept_and_remember(token, KeywordToken('class')):
-            return self.class_definition()
         else:
             raise ExpectationError('Expected a type definition', token)
-
-    def class_definition(self):
-        self.expect(self.next_or_remembered(), KeywordToken('class'))
-        id = self.expect(self.next_or_remembered(), IdentifierToken)
-        extends = None
-        token = self.next()
-        if self.accept(token, KeywordToken('extends')):
-            extends = self.expect(self.next(), IdentifierToken)
-            token = self.next()
-        self.expect(token, SymbolToken('{'))
-        variables, methods = self.class_fields()
-        self.expect(token, SymbolToken('}'))
-        return ClassDefinition(id.value, extends.value if extends else None, variables, methods)
-
-    def class_fields(self):
-        variables = {}
-        methods = {}
-        token = self.next_or_remembered()
-        if self.accept_and_remember(token, KeywordToken('var')):
-            variable = self.variable_declaration()
-            variables[variable.name] = variable
-        elif self.accept_and_remember(token, KeywordToken('method')):
-            method = self.method()
-            methods[method.name] = method
-        else:
-            self.remember(token)
-        return variables, methods
 
     def variable_declaration(self):
         self.expect(self.next_or_remembered(), KeywordToken('var'))
@@ -306,42 +263,55 @@ class Parser:
         token = self.next_or_remembered()
         type_id = None
         if self.accept(token, SymbolToken(':')):
-            type_id = self.expect_id(self.next())
+            type_id = self.type()
             token = self.next()
-        self.expect(self.next(), KeywordToken(':='))
+        self.expect(token, SymbolToken(':='))
         exp = self.expression()
-        return VariableDeclaration(id.value, type_id.value if type_id else None, exp)
-
-    def method_declaration(self):
-        self.expect(self.next_or_remembered(), KeywordToken('method'))
-        id = self.expect_id(self.next_or_remembered())
-        self.expect(self.next(), SymbolToken('('))
-        type_fields = self.type_fields()
-        self.expect(self.next(), SymbolToken(')'))
-        return_type = None
-        token = self.next()
-        if self.accept(token, SymbolToken(':')):
-            return_type = self.type_id()
-            token = self.next()
-        self.expect(token, SymbolToken('='))
-        exp = self.expression()
-        return MethodDeclaration(id, type_fields, return_type, exp)
+        return VariableDeclaration(id, type_id, exp)
 
     def type_fields(self):
         token = self.next_or_remembered()
-        if self.accept(token, IdentifierToken):
+        if self.accept_and_remember(token, IdentifierToken):
             type_fields = {}
             name, type_id = self.type_field()
             type_fields[name] = type_id
-            while
+            token = self.next_or_remembered()
+            while self.accept(token, SymbolToken(',')):
+                name, type_id = self.type_field()
+                type_fields[name] = type_id
+                token = self.next_or_remembered()
+            self.remember(token)
+            return type_fields
         else:
             self.remember(token)
             return {}
-        token = self.expect_id(self.next_or_remembered())
 
+    def type_field(self):
+        id = self.expect_id(self.next_or_remembered())
+        self.expect(self.next_or_remembered(), SymbolToken(':'))
+        type = self.type_id()
+        return id, type
 
     def type_id(self):
-        return self.expect(self.next_or_remembered(), IdentifierToken).value
+        return TypeId(self.expect(self.next_or_remembered(), IdentifierToken).value)
+
+    def function_declaration(self):
+        self.expect(self.next_or_remembered(), KeywordToken('function'))
+        id = self.expect_id(self.next_or_remembered())
+        self.expect(self.next_or_remembered(), SymbolToken('('))
+        params = self.type_fields()
+        self.expect(self.next_or_remembered(), SymbolToken(')'))
+        token = self.next_or_remembered()
+        return_type = None
+        if self.accept(token, SymbolToken(':')):
+            return_type = self.type()
+            token = self.next()
+        self.expect(token, SymbolToken('='))
+        exp = self.expression()
+        return FunctionDeclaration(id, params, return_type, exp)
+
+    def import_declaration(self):
+        raise NotImplementedError
 
     # navigation methods TODO make private
 

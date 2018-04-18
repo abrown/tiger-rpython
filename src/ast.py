@@ -15,7 +15,7 @@ class Exp(Program):
     pass
 
 
-class Dec(Program):
+class Declaration(Program):
     pass
 
 
@@ -69,7 +69,7 @@ class ObjectCreation(Exp):
         self.type = type
 
 
-class TypeId(Dec):
+class TypeId(Declaration):
     def __init__(self, name):
         self.name = name
 
@@ -138,3 +138,34 @@ class Let(Exp):
     def __init__(self, declarations, expressions):
         self.declarations = declarations
         self.expressions = expressions
+
+
+class TypeDeclaration(Declaration):
+    def __init__(self, name, type):
+        self.name = name
+        self.type = type
+
+
+class VariableDeclaration(Declaration):
+    def __init__(self, name, type, exp):
+        self.name = name
+        self.type = type
+        self.exp = exp
+
+
+class FunctionDeclaration(Declaration):
+    def __init__(self, name, parameters, return_type, body):
+        self.name = name
+        self.parameters = parameters
+        self.return_type = return_type
+        self.body = body
+
+
+class ArrayType(Declaration):
+    def __init__(self, element_type):
+        self.type_name = element_type
+
+class RecordType(Declaration):
+    def __init__(self, type_fields):
+        self.type_fields = type_fields
+

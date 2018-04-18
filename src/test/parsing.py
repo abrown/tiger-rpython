@@ -1,5 +1,4 @@
 import unittest
-
 from _ast import Break
 
 from src.parser import *
@@ -60,18 +59,9 @@ class TestParsing(unittest.TestCase):
     def test_function_call_with_arguments(self):
         self.assertParsesTo('a(b, "c")', FunctionCall('a', [LValue('b'), StringValue('c')]))
 
-    def test_method_call(self):
-        self.assertParsesTo('a.b(42)', MethodCall(LValue('a'), 'b', [IntegerValue(42)]))
-
-    def test_method_call_on_record(self):
-        self.assertParsesTo('a.b.c(42)', MethodCall(LValue('a', RecordLValue('b')), 'c', [IntegerValue(42)]))
-
-    def test_method_call_on_array(self):
-        self.assertParsesTo('a[b].c()', MethodCall(LValue('a', ArrayLValue(LValue('b'))), 'c', []))
-
     def test_assignment(self):
-        self.assertParsesTo('a[0] := b.c()',
-                            Assign(LValue('a', ArrayLValue(IntegerValue(0))), MethodCall(LValue('b'), 'c', [])))
+        self.assertParsesTo('a[0] := c()',
+                            Assign(LValue('a', ArrayLValue(IntegerValue(0))), FunctionCall('c', [])))
 
     def test_if(self):
         self.assertParsesTo('if a() then b', If(FunctionCall('a', []), LValue('b')))
@@ -86,6 +76,30 @@ class TestParsing(unittest.TestCase):
 
     def test_break(self):
         self.assertParsesTo('break', Break())
+
+    def test_variable_declaration(self):
+        self.assertParsesTo('var a := 42', VariableDeclaration('a', None, IntegerValue(42)))
+
+    def test_variable_declaration_with_type(self):
+        self.assertParsesTo('var a:int := 42', VariableDeclaration('a', TypeId('int'), IntegerValue(42)))
+
+    def test_empty_function_declaration(self):
+        self.assertParsesTo('function x() = noop', FunctionDeclaration('x', {}, None, LValue('noop')))
+                                            
+    def test_function_declaration(self):
+        self.assertParsesTo('function x(y:int, z:int):int = add(y, z)',
+                            FunctionDeclaration('x', {'y': TypeId('int'), 'z': TypeId('int')}, TypeId('int'),
+                                                FunctionCall('add', [LValue('y'), LValue('z')])))
+
+    def test_type_declaration(self):
+        self.assertParsesTo('type x = int', TypeDeclaration('x', TypeId('int')))
+
+    def test_type_declaration_with_record(self):
+        self.assertParsesTo('type tree = {key: int, children: treelist}',
+                            TypeDeclaration('tree', RecordType({'key': TypeId('int'), 'children': TypeId('treelist')})))
+
+    def test_type_declaration_with_array(self):
+        self.assertParsesTo('type treelist = array of tree', TypeDeclaration('treelist', ArrayType('tree')))
 
 
 if __name__ == '__main__':
