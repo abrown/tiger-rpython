@@ -111,6 +111,19 @@ class TestParsing(unittest.TestCase):
         self.assertParsesTo('(a := 1; b := 2)',
                             Sequence([Assign(LValue('a'), IntegerValue(1)), Assign(LValue('b'), IntegerValue(2))]))
 
+    def test_add_operator(self):
+        self.assertParsesTo('a + b', Add(LValue('a'), LValue('b')))
+
+    def test_multiply_operator(self):
+        self.assertParsesTo('(a + b) * c', Multiply(Sequence([Add(LValue('a'), LValue('b'))]), LValue('c')))
+
+    def test_multiply_operator_precedence(self):
+        self.assertParsesTo('a + b * c', Add(LValue('a'), Multiply(LValue('b'), LValue('c'))))
+
+    def test_boolean_expression(self):
+        self.assertParsesTo('a + b > 42 | c < 42', Or(GreaterThan(Add(LValue('a'), LValue('b')), IntegerValue(42)),
+                                                       LessThan(LValue('c'), IntegerValue(42))))
+
 
 if __name__ == '__main__':
     unittest.main()

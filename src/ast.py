@@ -174,3 +174,57 @@ class RecordType(Declaration):
 class Sequence(Exp):
     def __init__(self, expressions):
         self.expressions = expressions
+
+
+class BinaryOperation(Exp):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+
+class Multiply(BinaryOperation):
+    pass
+
+
+class Divide(BinaryOperation):
+    pass
+
+
+class Add(BinaryOperation):
+    pass
+
+
+class Subtract(BinaryOperation):
+    pass
+
+
+class GreaterThanOrEquals(BinaryOperation):
+    pass
+
+
+class LessThanOrEquals(BinaryOperation):
+    pass
+
+
+class Equals(BinaryOperation):
+    pass
+
+
+class NotEquals(BinaryOperation):
+    pass
+
+
+class GreaterThan(BinaryOperation):
+    pass
+
+
+class LessThan(BinaryOperation):
+    pass
+
+
+class And(BinaryOperation):
+    pass
+
+
+class Or(BinaryOperation):
+    pass

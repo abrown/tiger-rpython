@@ -1,6 +1,8 @@
 from src.ast import NilValue, IntegerValue, StringValue, ArrayCreation, TypeId, RecordCreation, LValue, \
     ObjectCreation, FunctionCall, RecordLValue, ArrayLValue, Assign, If, While, For, Break, Let, \
-    TypeDeclaration, ArrayType, VariableDeclaration, FunctionDeclaration, RecordType, Sequence
+    TypeDeclaration, ArrayType, VariableDeclaration, FunctionDeclaration, RecordType, Sequence, Multiply, Divide, Add, \
+    Subtract, GreaterThanOrEquals, LessThanOrEquals, Equals, NotEquals, GreaterThan, LessThan, \
+    And, Or
 from src.tokenizer import Tokenizer
 from src.tokens import NumberToken, IdentifierToken, KeywordToken, SymbolToken, StringToken
 
@@ -23,6 +25,37 @@ class ExpectationError(ParseError):
         return 'Expected %s but did not find it at %s' % (self.expected, self.token)
 
 
+PRECEDENCE = {
+    '*': 5,
+    '/': 5,
+    '+': 4,
+    '-': 4,
+    '>=': 3,
+    '<=': 3,
+    '=': 3,
+    '<>': 3,
+    '>': 3,
+    '<': 3,
+    '&': 2,
+    '|': 1,
+}
+
+OPERATORS = {
+    '*': Multiply,
+    '/': Divide,
+    '+': Add,
+    '-': Subtract,
+    '>=': GreaterThanOrEquals,
+    '<=': LessThanOrEquals,
+    '=': Equals,
+    '<>': NotEquals,
+    '>': GreaterThan,
+    '<': LessThan,
+    '&': And,
+    '|': Or
+}
+
+
 class Parser:
     def __init__(self, text):
         self.tokenizer = Tokenizer(text)
@@ -33,36 +66,60 @@ class Parser:
 
     def expression(self):
         token = self.next_or_remembered()
+        exp = None
         if self.accept(token, KeywordToken('nil')):
-            return NilValue()
+            exp = NilValue()
         elif self.accept(token, NumberToken):
-            return IntegerValue(token.value)
+            exp = IntegerValue(token.value)
         elif self.accept(token, StringToken):
-            return StringValue(token.value)
+            exp = StringValue(token.value)
         elif self.accept_and_remember(token, SymbolToken('(')):
-            return self.sequence()
+            exp = self.sequence()
         elif self.accept_and_remember(token, IdentifierToken):
-            return self.id_started()
+            exp = self.id_started()
         elif self.accept_and_remember(token, KeywordToken('new')):
-            return self.object()
+            exp = self.object()
         elif self.accept_and_remember(token, KeywordToken('if')):
-            return self.if_then()
+            exp = self.if_then()
         elif self.accept_and_remember(token, KeywordToken('while')):
-            return self.while_do()
+            exp = self.while_do()
         elif self.accept_and_remember(token, KeywordToken('for')):
-            return self.for_do()
+            exp = self.for_do()
         elif self.accept(token, KeywordToken('break')):
-            return Break()
+            exp = Break()
         elif self.accept_and_remember(token, KeywordToken('let')):
-            return self.let()
+            exp = self.let()
         elif self.accept_and_remember(token, KeywordToken('type')):
-            return self.type_declaration()
+            exp = self.type_declaration()
         elif self.accept_and_remember(token, KeywordToken('var')):
-            return self.variable_declaration()
+            exp = self.variable_declaration()
         elif self.accept_and_remember(token, KeywordToken('function')):
-            return self.function_declaration()
+            exp = self.function_declaration()
         else:
             raise ParseError('Unable to parse', token)
+
+        return self.expression_with_precedence(exp)
+
+    def expression_with_precedence(self, left, precedence=0):
+        token = self.next_or_remembered()
+        while self.has_higher_precedence(token, precedence):
+            operation = token.value
+            inner_precedence = PRECEDENCE[token.value]
+            right = self.expression()
+            token = self.next_or_remembered()
+            while self.has_higher_precedence(token, inner_precedence):
+                right = self.expression_with_precedence(right, PRECEDENCE[token.value])
+                token = self.next_or_remembered()
+            left = self.operation(operation, left, right)
+        self.remember(token)
+        return left
+
+    def has_higher_precedence(self, token, precedence=0):
+        return isinstance(token, SymbolToken) and token.value in PRECEDENCE and PRECEDENCE[token.value] >= precedence
+
+    def operation(self, operation, left, right):
+        operator_class = OPERATORS[operation]  # TODO probably will not work in RPython
+        return operator_class(left, right)
 
     def id_started(self):
         token = self.next()
