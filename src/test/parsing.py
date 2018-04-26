@@ -120,9 +120,12 @@ class TestParsing(unittest.TestCase):
     def test_multiply_operator_precedence(self):
         self.assertParsesTo('a + b * c', Add(LValue('a'), Multiply(LValue('b'), LValue('c'))))
 
-    def test_boolean_expression(self):
+    def test_simple_boolean_expression(self):
+        self.assertParsesTo('a + b & c', And(Add(LValue('a'), LValue('b')), LValue('c')))
+
+    def test_complex_boolean_expression(self):
         self.assertParsesTo('a + b > 42 | c < 42', Or(GreaterThan(Add(LValue('a'), LValue('b')), IntegerValue(42)),
-                                                       LessThan(LValue('c'), IntegerValue(42))))
+                                                      LessThan(LValue('c'), IntegerValue(42))))
 
 
 if __name__ == '__main__':

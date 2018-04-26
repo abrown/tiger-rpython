@@ -65,57 +65,65 @@ class Parser:
         return self.expression()
 
     def expression(self):
-        token = self.next_or_remembered()
-        exp = None
-        if self.accept(token, KeywordToken('nil')):
-            exp = NilValue()
-        elif self.accept(token, NumberToken):
-            exp = IntegerValue(token.value)
-        elif self.accept(token, StringToken):
-            exp = StringValue(token.value)
-        elif self.accept_and_remember(token, SymbolToken('(')):
-            exp = self.sequence()
-        elif self.accept_and_remember(token, IdentifierToken):
-            exp = self.id_started()
-        elif self.accept_and_remember(token, KeywordToken('new')):
-            exp = self.object()
-        elif self.accept_and_remember(token, KeywordToken('if')):
-            exp = self.if_then()
-        elif self.accept_and_remember(token, KeywordToken('while')):
-            exp = self.while_do()
-        elif self.accept_and_remember(token, KeywordToken('for')):
-            exp = self.for_do()
-        elif self.accept(token, KeywordToken('break')):
-            exp = Break()
-        elif self.accept_and_remember(token, KeywordToken('let')):
-            exp = self.let()
-        elif self.accept_and_remember(token, KeywordToken('type')):
-            exp = self.type_declaration()
-        elif self.accept_and_remember(token, KeywordToken('var')):
-            exp = self.variable_declaration()
-        elif self.accept_and_remember(token, KeywordToken('function')):
-            exp = self.function_declaration()
-        else:
-            raise ParseError('Unable to parse', token)
-
+        exp = self.expression_without_precedence()
+        if exp is None:
+            raise ParseError('Unable to parse', self.next_or_remembered())
         return self.expression_with_precedence(exp)
+
+    def expression_without_precedence(self):
+        token = self.next_or_remembered()
+        if self.accept(token, KeywordToken('nil')):
+            return NilValue()
+        elif self.accept(token, NumberToken):
+            return IntegerValue(token.value)
+        elif self.accept(token, StringToken):
+            return StringValue(token.value)
+        elif self.accept_and_remember(token, SymbolToken('(')):
+            return self.sequence()
+        elif self.accept_and_remember(token, IdentifierToken):
+            return self.id_started()
+        elif self.accept_and_remember(token, KeywordToken('new')):
+            return self.object()
+        elif self.accept_and_remember(token, KeywordToken('if')):
+            return self.if_then()
+        elif self.accept_and_remember(token, KeywordToken('while')):
+            return self.while_do()
+        elif self.accept_and_remember(token, KeywordToken('for')):
+            return self.for_do()
+        elif self.accept(token, KeywordToken('break')):
+            return Break()
+        elif self.accept_and_remember(token, KeywordToken('let')):
+            return self.let()
+        elif self.accept_and_remember(token, KeywordToken('type')):
+            return self.type_declaration()
+        elif self.accept_and_remember(token, KeywordToken('var')):
+            return self.variable_declaration()
+        elif self.accept_and_remember(token, KeywordToken('function')):
+            return self.function_declaration()
+        else:
+            self.remember(token)
+            raise None
 
     def expression_with_precedence(self, left, precedence=0):
         token = self.next_or_remembered()
-        while self.has_higher_precedence(token, precedence):
+        while self.is_operator(token) and self.precedence(token) >= precedence:
             operation = token.value
             inner_precedence = PRECEDENCE[token.value]
-            right = self.expression()
+            right = self.expression_without_precedence()
             token = self.next_or_remembered()
-            while self.has_higher_precedence(token, inner_precedence):
+            while self.is_operator(token) and self.precedence(token) > inner_precedence:
+                self.remember(token)
                 right = self.expression_with_precedence(right, PRECEDENCE[token.value])
                 token = self.next_or_remembered()
             left = self.operation(operation, left, right)
         self.remember(token)
         return left
 
-    def has_higher_precedence(self, token, precedence=0):
-        return isinstance(token, SymbolToken) and token.value in PRECEDENCE and PRECEDENCE[token.value] >= precedence
+    def is_operator(self, token):
+        return isinstance(token, SymbolToken) and token.value in PRECEDENCE
+
+    def precedence(self, token):
+        return PRECEDENCE[token.value]
 
     def operation(self, operation, left, right):
         operator_class = OPERATORS[operation]  # TODO probably will not work in RPython
