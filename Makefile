@@ -4,7 +4,7 @@ VERSION=0.1
 all: test
 
 test:
-	python -m unittest discover -s src/test -p "*.py" -t .
+	python3 -m unittest discover -s src/test -p "*.py" -t .
 
 clean: clean-pyc
 	rm -f *.log
