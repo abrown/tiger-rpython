@@ -127,6 +127,14 @@ class TestParsing(unittest.TestCase):
         self.assertParsesTo('a + b > 42 | c < 42', Or(GreaterThan(Add(LValue('a'), LValue('b')), IntegerValue(42)),
                                                       LessThan(LValue('c'), IntegerValue(42))))
 
+    def test_exps(self):
+        # TODO
+        pass
+
+    def test_let_declarations(self):
+        # TODO
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()
