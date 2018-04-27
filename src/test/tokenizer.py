@@ -31,6 +31,16 @@ class TestTokenizer(unittest.TestCase):
     def test_assign(self):
         self.assertTokenizesTo('a := b', [IdentifierToken('a'), SymbolToken(':='), IdentifierToken('b')])
 
+    def test_peeking(self):
+        sut = Tokenizer("2 + 2")
+
+        self.assertEquals(sut.peek(), NumberToken('2'))
+        self.assertEquals(sut.peek(), sut.peek(0))
+        self.assertEquals(sut.peek(1), SymbolToken('+'))
+        self.assertEquals(sut.peek(2), NumberToken('2'))
+        self.assertEquals(sut.peek(3), None)
+        self.assertEquals(sut.next(), NumberToken('2'))
+
 
 if __name__ == '__main__':
     unittest.main()

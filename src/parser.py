@@ -400,7 +400,7 @@ class Parser:
 
     def next(self):
         """Return the next token"""
-        return self.tokenizer.next()
+        return self.tokenizer.tokenize()
 
     def next_or_remembered(self):
         if len(self.remembered):

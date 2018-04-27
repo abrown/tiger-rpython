@@ -27,16 +27,30 @@ class Tokenizer:
         self.offset = 0
         self.line_offset = 0
         self.line = 1
+        self.buffer = []
 
     def all(self):
+        """Return all of the tokens in the text"""
         ts = []
-        t = self.next()
+        t = self.tokenize()
         while t:
             ts.append(t)
-            t = self.next()
+            t = self.tokenize()
         return ts
 
+    def peek(self, index=0):
+        """Peek at the next token (or optionally some number of tokens in) without consuming it"""
+        while len(self.buffer) <= index:
+            self.buffer.append(self.tokenize())
+        return self.buffer[index]
+
     def next(self):
+        if len(self.buffer):
+            return self.buffer.pop(0)
+        else:
+            return self.tokenize()
+
+    def tokenize(self):
         """Retrieve the next token from the text"""
         c = self.__current_character()
         while c:
