@@ -263,17 +263,29 @@ class Parser:
 
     def let(self):
         self.expect(KeywordToken('let'))
-        decs = self.decs()
+        decs = self.declarations()
         self.expect(KeywordToken('in'))
-        exps = self.exps()
+        if not self.accept(KeywordToken('end')):
+            exps = self.expressions()
+        else:
+            exps = []
         self.expect(KeywordToken('end'))
         return Let(decs, exps)
 
-    def decs(self):
-        # TODO
-        pass
+    def declarations(self):
+        declarations = []
+        while self.is_declaration():
+            declaration = self.declaration()
+            declarations.append(declaration)
+        return declarations
 
-    def exps(self):
+    def is_declaration(self):
+        token = self.peek()
+        return isinstance(token, KeywordToken) and token.value in ['type', 'var', 'function', 'import']
+
+    def expressions(self):
+        # note that though Dr. Appel's specification admits empty lists of expressions, I restrict this to at
+        # least one expression to avoid exception handling
         expressions = [self.expression()]
         while self.accept_and_consume(SymbolToken(';')):
             expressions.append(self.expression())
@@ -291,7 +303,7 @@ class Parser:
             elif token.value == 'import':
                 return self.import_declaration()
             else:
-                raise ExpectationError('Expected keyword in {type, class, var, function, primitive, import}', token)
+                raise ExpectationError('Expected keyword in {type, var, function, import}', token)
         else:
             return None
 

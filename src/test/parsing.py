@@ -130,13 +130,21 @@ class TestParsing(unittest.TestCase):
         self.assertParsesTo('a + b > 42 | c < 42', Or(GreaterThan(Add(LValue('a'), LValue('b')), IntegerValue(42)),
                                                       LessThan(LValue('c'), IntegerValue(42))))
 
-    def test_exps(self):
-        # TODO
-        pass
-
     def test_let_declarations(self):
-        # TODO
-        pass
+        self.assertParsesTo('let var a := 1 var b := 2 in print(a) end',
+                            Let([VariableDeclaration('a', None, IntegerValue(1)),
+                                 VariableDeclaration('b', None, IntegerValue(2))],
+                                [FunctionCall('print', [LValue('a')])]))
+
+    def test_let_empty_declaration(self):
+        self.assertParsesTo('let in x() end', Let([], [FunctionCall('x', [])]))
+
+    def test_let_empty_body(self):
+        self.assertParsesTo('let type x = int in end', Let([TypeDeclaration('x', TypeId('int'))], []))
+
+    def test_let_multiple_expressions(self):
+        self.assertParsesTo('let var x := 1 in y(); z() end', Let([VariableDeclaration('x', None, IntegerValue(1))],
+                                                                  [FunctionCall('y', []), FunctionCall('z', [])]))
 
 
 if __name__ == '__main__':
