@@ -22,6 +22,9 @@ class TestParsing(unittest.TestCase):
     def test_integer(self):
         self.assertParsesTo('42', IntegerValue(42))
 
+    def test_negative_integer(self):
+        self.assertParsesTo('-42', IntegerValue(-42))
+
     def test_string(self):
         self.assertParsesTo('"abc"', StringValue('abc'))
 

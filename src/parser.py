@@ -76,6 +76,9 @@ class Parser:
         elif self.accept(NumberToken):
             token = self.next()
             return IntegerValue(token.value)
+        elif self.accept_and_consume(SymbolToken('-')):
+            token = self.next()
+            return IntegerValue('-' + token.value)
         elif self.accept(StringToken):
             token = self.next()
             return StringValue(token.value)
