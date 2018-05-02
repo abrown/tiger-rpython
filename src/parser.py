@@ -61,95 +61,21 @@ class Parser:
         self.tokenizer = Tokenizer(text)
 
     def parse(self):
-        # TODO should this be self.exps()?
         return self.expression()
 
-    def expression(self):
-        exp = self.expression_without_precedence()
-        if exp is None:
-            raise ParseError('Unable to parse', self.peek())
-        return self.expression_with_precedence(exp)
-
-    def expression_without_precedence(self):
-        if self.accept(KeywordToken('nil')):
-            return NilValue()
-        elif self.accept(NumberToken):
-            token = self.next()
-            return IntegerValue(token.value)
-        elif self.accept_and_consume(SymbolToken('-')):
-            token = self.next()
-            return IntegerValue('-' + token.value)
-        elif self.accept(StringToken):
-            token = self.next()
-            return StringValue(token.value)
-        elif self.accept(SymbolToken('(')):
-            return self.sequence()
-        elif self.accept(IdentifierToken):
-            return self.id_started()
-        elif self.accept(KeywordToken('new')):
-            return self.object()
-        elif self.accept(KeywordToken('if')):
-            return self.if_then()
-        elif self.accept(KeywordToken('while')):
-            return self.while_do()
-        elif self.accept(KeywordToken('for')):
-            return self.for_do()
-        elif self.accept(KeywordToken('break')):
-            return Break()
-        elif self.accept(KeywordToken('let')):
-            return self.let()
-        elif self.accept(KeywordToken('type')):
-            return self.type_declaration()
-        elif self.accept(KeywordToken('var')):
-            return self.variable_declaration()
-        elif self.accept(KeywordToken('function')):
-            return self.function_declaration()
-        else:
-            return None
-
-    def expression_with_precedence(self, left, precedence=0):
-        """See https://en.wikipedia.org/wiki/Operator-precedence_parser"""
-        token = self.peek()
-        while self.is_operator(token) and self.precedence(token) >= precedence:
-            self.next()  # consume operator
-            operation = token.value
-            inner_precedence = PRECEDENCE[token.value]
-            right = self.expression_without_precedence()
-            token = self.peek()
-            while self.is_operator(token) and self.precedence(token) >= inner_precedence:
-                right = self.expression_with_precedence(right, PRECEDENCE[token.value])
-                token = self.peek()
-            left = self.operation(operation, left, right)
-        return left
-
-    def is_operator(self, token):
-        return isinstance(token, SymbolToken) and token.value in PRECEDENCE
-
-    def precedence(self, token):
-        return PRECEDENCE[token.value]
-
-    def operation(self, operation, left, right):
-        operator_class = OPERATORS[operation]  # TODO probably will not work in RPython
-        return operator_class(left, right)
-
-    def id_started(self):
-        """An ID has been peeked above, peek further..."""
-        if self.accept(SymbolToken('{'), self.peek(1)):
-            return self.record()
-        elif self.accept(SymbolToken('('), self.peek(1)):
-            return self.function_call()
-        else:
-            lvalue = self.lvalue()
-            return self.lvalue_started(lvalue)
-
-    def lvalue_started(self, lvalue):
-        if self.accept_and_consume(SymbolToken(':=')):
+    # recursive descent parse methods (organized alphabetically)
+    def arguments(self):
+        self.__expect(SymbolToken('('))
+        args = []
+        token = self.__peek()
+        if token != SymbolToken(')'):
             exp = self.expression()
-            return Assign(lvalue, exp)
-        elif self.accept_and_consume(KeywordToken('of')):
-            return self.array_from_lvalue(lvalue)
-        else:
-            return lvalue
+            args.append(exp)
+            while self.__accept_and_consume(SymbolToken(',')):
+                exp = self.expression()
+                args.append(exp)
+        self.__expect(SymbolToken(')'))
+        return args
 
     def array(self):
         lvalue = self.lvalue()
@@ -163,137 +89,15 @@ class Parser:
         exp2 = self.expression()
         return ArrayCreation(TypeId(type), exp1, exp2)
 
-    def record(self):
-        type = self.expect(IdentifierToken)
-        self.expect(SymbolToken('{'))
-        fields = {}
-        while self.accept(IdentifierToken):
-            id, exp = self.id_field()
-            fields[id] = exp
-            token2 = self.next()
-            if self.accept(SymbolToken(','), token2):
-                pass
-            elif self.accept(SymbolToken('}'), token2):
-                break
-            else:
-                raise ParseError('Expected either , or }', token2)
-            # TODO possibility for garbage after ', ...'
-        return RecordCreation(TypeId(type.value), fields)
-
-    def id_field(self):
-        id = self.id()
-        self.expect(SymbolToken('='))
-        exp = self.expression()
-        return id, exp
-
-    def object(self):
-        self.expect(KeywordToken('new'))
-        type_id = self.expect(IdentifierToken)
-        return ObjectCreation(TypeId(type_id.value))
-
-    def function_call(self):
-        function_id = self.id()
-        args = self.args()
-        return FunctionCall(function_id, args)
-
-    def args(self):
-        self.expect(SymbolToken('('))
-        args = []
-        token = self.peek()
-        if token != SymbolToken(')'):
-            exp = self.expression()
-            args.append(exp)
-            while self.accept_and_consume(SymbolToken(',')):
-                exp = self.expression()
-                args.append(exp)
-        self.expect(SymbolToken(')'))
-        return args
-
-    def lvalue(self):
-        id = self.id()
-        next = self.lvalue_next()
-        return LValue(id, next)
-
-    def lvalue_next(self):
-        next = None
-        if self.accept_and_consume(SymbolToken('.')):
-            next = self.record_lvalue()
-        elif self.accept_and_consume(SymbolToken('[')):
-            next = self.array_lvalue()
-        return next
-
-    def record_lvalue(self):
-        id = self.expect(IdentifierToken)
-        next = self.lvalue_next()
-        return RecordLValue(id.value, next)
-
     def array_lvalue(self):
         exp = self.expression()
-        self.expect(SymbolToken(']'))
+        self.__expect(SymbolToken(']'))
         next = self.lvalue_next()
         return ArrayLValue(exp, next)
 
-    def if_then(self):
-        self.expect(KeywordToken('if'))
-        condition = self.expression()
-        self.expect(KeywordToken('then'))
-        exp1 = self.expression()
-        exp2 = None
-        if self.accept_and_consume(KeywordToken('else')):
-            exp2 = self.expression()
-        return If(condition, exp1, exp2)
-
-    def while_do(self):
-        self.expect(KeywordToken('while'))
-        condition = self.expression()
-        self.expect(KeywordToken('do'))
-        body = self.expression()
-        return While(condition, body)
-
-    def for_do(self):
-        self.expect(KeywordToken('for'))
-        var = self.expect(IdentifierToken)
-        self.expect(SymbolToken(':='))
-        start = self.expression()
-        self.expect(KeywordToken('to'))
-        end = self.expression()
-        self.expect(KeywordToken('do'))
-        body = self.expression()
-        return For(var.value, start, end, body)
-
-    def let(self):
-        self.expect(KeywordToken('let'))
-        decs = self.declarations()
-        self.expect(KeywordToken('in'))
-        if not self.accept(KeywordToken('end')):
-            exps = self.expressions()
-        else:
-            exps = []
-        self.expect(KeywordToken('end'))
-        return Let(decs, exps)
-
-    def declarations(self):
-        declarations = []
-        while self.is_declaration():
-            declaration = self.declaration()
-            declarations.append(declaration)
-        return declarations
-
-    def is_declaration(self):
-        token = self.peek()
-        return isinstance(token, KeywordToken) and token.value in ['type', 'var', 'function', 'import']
-
-    def expressions(self):
-        # note that though Dr. Appel's specification admits empty lists of expressions, I restrict this to at
-        # least one expression to avoid exception handling
-        expressions = [self.expression()]
-        while self.accept_and_consume(SymbolToken(';')):
-            expressions.append(self.expression())
-        return expressions
-
     def declaration(self):
-        if self.accept(KeywordToken):
-            token = self.peek()
+        if self.__accept(KeywordToken):
+            token = self.__peek()
             if token.value == 'type':
                 return self.type_declaration()
             elif token.value == 'var':
@@ -307,42 +111,253 @@ class Parser:
         else:
             return None
 
-    def type_declaration(self):
-        self.expect(KeywordToken('type'))
+    def declarations(self):
+        declarations = []
+        while self.is_declaration():
+            declaration = self.declaration()
+            declarations.append(declaration)
+        return declarations
+
+    def expression(self):
+        exp = self.expression_without_precedence()
+        if exp is None:
+            raise ParseError('Unable to parse', self.__peek())
+        return self.expression_with_precedence(exp)
+
+    def expressions(self):
+        # note that though Dr. Appel's specification admits empty lists of expressions, I restrict this to at
+        # least one expression to avoid exception handling
+        expressions = [self.expression()]
+        while self.__accept_and_consume(SymbolToken(';')):
+            expressions.append(self.expression())
+        return expressions
+
+    def expression_with_precedence(self, left, precedence=0):
+        """See https://en.wikipedia.org/wiki/Operator-precedence_parser"""
+        token = self.__peek()
+        while self.is_operator(token) and self.precedence(token) >= precedence:
+            self.__next()  # consume operator
+            operation = token.value
+            inner_precedence = PRECEDENCE[token.value]
+            right = self.expression_without_precedence()
+            token = self.__peek()
+            while self.is_operator(token) and self.precedence(token) >= inner_precedence:
+                right = self.expression_with_precedence(right, PRECEDENCE[token.value])
+                token = self.__peek()
+            left = self.operation(operation, left, right)
+        return left
+
+    def expression_without_precedence(self):
+        if self.__accept(KeywordToken('nil')):
+            return NilValue()
+        elif self.__accept(NumberToken):
+            token = self.__next()
+            return IntegerValue(token.value)
+        elif self.__accept_and_consume(SymbolToken('-')):
+            token = self.__next()
+            return IntegerValue('-' + token.value)
+        elif self.__accept(StringToken):
+            token = self.__next()
+            return StringValue(token.value)
+        elif self.__accept(SymbolToken('(')):
+            return self.sequence()
+        elif self.__accept(IdentifierToken):
+            return self.id_started()
+        elif self.__accept(KeywordToken('new')):
+            return self.object()
+        elif self.__accept(KeywordToken('if')):
+            return self.if_then()
+        elif self.__accept(KeywordToken('while')):
+            return self.while_do()
+        elif self.__accept(KeywordToken('for')):
+            return self.for_do()
+        elif self.__accept(KeywordToken('break')):
+            return Break()
+        elif self.__accept(KeywordToken('let')):
+            return self.let()
+        elif self.__accept(KeywordToken('type')):
+            return self.type_declaration()
+        elif self.__accept(KeywordToken('var')):
+            return self.variable_declaration()
+        elif self.__accept(KeywordToken('function')):
+            return self.function_declaration()
+        else:
+            return None
+
+    def for_do(self):
+        self.__expect(KeywordToken('for'))
+        var = self.__expect(IdentifierToken)
+        self.__expect(SymbolToken(':='))
+        start = self.expression()
+        self.__expect(KeywordToken('to'))
+        end = self.expression()
+        self.__expect(KeywordToken('do'))
+        body = self.expression()
+        return For(var.value, start, end, body)
+
+    def function_call(self):
+        function_id = self.id()
+        args = self.arguments()
+        return FunctionCall(function_id, args)
+
+    def function_declaration(self):
+        self.__expect(KeywordToken('function'))
         id = self.id()
-        self.expect(SymbolToken('='))
-        ty = self.type()
-        return TypeDeclaration(id, ty)
+        self.__expect(SymbolToken('('))
+        params = self.type_fields()
+        self.__expect(SymbolToken(')'))
+        return_type = None
+        if self.__accept_and_consume(SymbolToken(':')):
+            return_type = self.type()
+        self.__expect(SymbolToken('='))
+        exp = self.expression()
+        return FunctionDeclaration(id, params, return_type, exp)
+
+    def id(self):
+        token = self.__expect(IdentifierToken)
+        return token.value
+
+    def id_field(self):
+        id = self.id()
+        self.__expect(SymbolToken('='))
+        exp = self.expression()
+        return id, exp
+
+    def id_started(self):
+        """An ID has been peeked above, peek further..."""
+        if self.__accept(SymbolToken('{'), self.__peek(1)):
+            return self.record()
+        elif self.__accept(SymbolToken('('), self.__peek(1)):
+            return self.function_call()
+        else:
+            lvalue = self.lvalue()
+            return self.lvalue_started(lvalue)
+
+    def if_then(self):
+        self.__expect(KeywordToken('if'))
+        condition = self.expression()
+        self.__expect(KeywordToken('then'))
+        exp1 = self.expression()
+        exp2 = None
+        if self.__accept_and_consume(KeywordToken('else')):
+            exp2 = self.expression()
+        return If(condition, exp1, exp2)
+
+    def import_declaration(self):
+        raise NotImplementedError
+
+    def is_declaration(self):
+        token = self.__peek()
+        return isinstance(token, KeywordToken) and token.value in ['type', 'var', 'function', 'import']
+
+    def is_operator(self, token):
+        return isinstance(token, SymbolToken) and token.value in PRECEDENCE
+
+    def let(self):
+        self.__expect(KeywordToken('let'))
+        decs = self.declarations()
+        self.__expect(KeywordToken('in'))
+        if not self.__accept(KeywordToken('end')):
+            exps = self.expressions()
+        else:
+            exps = []
+        self.__expect(KeywordToken('end'))
+        return Let(decs, exps)
+
+    def lvalue(self):
+        id = self.id()
+        next = self.lvalue_next()
+        return LValue(id, next)
+
+    def lvalue_next(self):
+        next = None
+        if self.__accept_and_consume(SymbolToken('.')):
+            next = self.record_lvalue()
+        elif self.__accept_and_consume(SymbolToken('[')):
+            next = self.array_lvalue()
+        return next
+
+    def lvalue_started(self, lvalue):
+        if self.__accept_and_consume(SymbolToken(':=')):
+            exp = self.expression()
+            return Assign(lvalue, exp)
+        elif self.__accept_and_consume(KeywordToken('of')):
+            return self.array_from_lvalue(lvalue)
+        else:
+            return lvalue
+
+    def object(self):
+        self.__expect(KeywordToken('new'))
+        type_id = self.__expect(IdentifierToken)
+        return ObjectCreation(TypeId(type_id.value))
+
+    def operation(self, operation, left, right):
+        operator_class = OPERATORS[operation]  # TODO probably will not work in RPython
+        return operator_class(left, right)
+
+    def precedence(self, token):
+        return PRECEDENCE[token.value]
+
+    def record(self):
+        type = self.__expect(IdentifierToken)
+        self.__expect(SymbolToken('{'))
+        fields = {}
+        while self.__accept(IdentifierToken):
+            id, exp = self.id_field()
+            fields[id] = exp
+            token2 = self.__next()
+            if self.__accept(SymbolToken(','), token2):
+                pass
+            elif self.__accept(SymbolToken('}'), token2):
+                break
+            else:
+                raise ParseError('Expected either , or }', token2)
+            # TODO possibility for garbage after ', ...'
+        return RecordCreation(TypeId(type.value), fields)
+
+    def record_lvalue(self):
+        id = self.__expect(IdentifierToken)
+        next = self.lvalue_next()
+        return RecordLValue(id.value, next)
+
+    def sequence(self):
+        exps = []
+        self.__expect(SymbolToken('('))
+        if self.__peek() != SymbolToken(')'):
+            exp = self.expression()
+            exps.append(exp)
+            while self.__accept_and_consume(SymbolToken(';')):
+                exp = self.expression()
+                exps.append(exp)
+        self.__expect(SymbolToken(')'))
+        return Sequence(exps)
 
     def type(self):
-        token = self.next()
-        if self.accept(IdentifierToken, token):
+        token = self.__next()
+        if self.__accept(IdentifierToken, token):
             return TypeId(token.value)
-        elif self.accept(SymbolToken('{'), token):
+        elif self.__accept(SymbolToken('{'), token):
             return RecordType(self.type_fields())
-        elif self.accept(KeywordToken('array'), token):
-            self.expect(KeywordToken('of'))
-            id = self.expect(IdentifierToken)
+        elif self.__accept(KeywordToken('array'), token):
+            self.__expect(KeywordToken('of'))
+            id = self.__expect(IdentifierToken)
             return ArrayType(id.value)
         else:
             raise ExpectationError('Expected a type definition', token)
 
-    def variable_declaration(self):
-        self.expect(KeywordToken('var'))
+    def type_declaration(self):
+        self.__expect(KeywordToken('type'))
         id = self.id()
-        type_id = None
-        if self.accept_and_consume(SymbolToken(':')):
-            type_id = self.type()
-        self.expect(SymbolToken(':='))
-        exp = self.expression()
-        return VariableDeclaration(id, type_id, exp)
+        self.__expect(SymbolToken('='))
+        ty = self.type()
+        return TypeDeclaration(id, ty)
 
     def type_fields(self):
-        if self.accept(IdentifierToken):
+        if self.__accept(IdentifierToken):
             type_fields = {}
             name, type_id = self.type_field()
             type_fields[name] = type_id
-            while self.accept_and_consume(SymbolToken(',')):
+            while self.__accept_and_consume(SymbolToken(',')):
                 name, type_id = self.type_field()
                 type_fields[name] = type_id
             return type_fields
@@ -351,57 +366,42 @@ class Parser:
 
     def type_field(self):
         id = self.id()
-        self.expect(SymbolToken(':'))
+        self.__expect(SymbolToken(':'))
         type = self.type_id()
         return id, type
 
     def type_id(self):
-        type_id = self.expect(IdentifierToken)
+        type_id = self.__expect(IdentifierToken)
         return TypeId(type_id.value)
 
-    def function_declaration(self):
-        self.expect(KeywordToken('function'))
+    def variable_declaration(self):
+        self.__expect(KeywordToken('var'))
         id = self.id()
-        self.expect(SymbolToken('('))
-        params = self.type_fields()
-        self.expect(SymbolToken(')'))
-        return_type = None
-        if self.accept_and_consume(SymbolToken(':')):
-            return_type = self.type()
-        self.expect(SymbolToken('='))
+        type_id = None
+        if self.__accept_and_consume(SymbolToken(':')):
+            type_id = self.type()
+        self.__expect(SymbolToken(':='))
         exp = self.expression()
-        return FunctionDeclaration(id, params, return_type, exp)
+        return VariableDeclaration(id, type_id, exp)
 
-    def import_declaration(self):
-        raise NotImplementedError
-
-    def sequence(self):
-        exps = []
-        self.expect(SymbolToken('('))
-        if self.peek() != SymbolToken(')'):
-            exp = self.expression()
-            exps.append(exp)
-            while self.accept_and_consume(SymbolToken(';')):
-                exp = self.expression()
-                exps.append(exp)
-        self.expect(SymbolToken(')'))
-        return Sequence(exps)
-
-    def id(self):
-        token = self.expect(IdentifierToken)
-        return token.value
+    def while_do(self):
+        self.__expect(KeywordToken('while'))
+        condition = self.expression()
+        self.__expect(KeywordToken('do'))
+        body = self.expression()
+        return While(condition, body)
 
     # navigation methods TODO make private
 
-    def peek(self, index=0):
+    def __peek(self, index=0):
         """Peek at the next token"""
         return self.tokenizer.peek(index)
 
-    def next(self):
+    def __next(self):
         """Consume and return the next token"""
         return self.tokenizer.next()
 
-    def accept(self, expected, token=None):
+    def __accept(self, expected, token=None):
         """Check if the given token (or the next peeked token, if none is passed) is of a certain type or has a certain
         value"""
         token = token or self.tokenizer.peek()
@@ -410,16 +410,16 @@ class Parser:
         else:
             return False
 
-    def accept_and_consume(self, expected):
+    def __accept_and_consume(self, expected):
         """Check if the next token is of a certain type or has a certain value; if it is, consume it"""
-        accepted = self.accept(expected)
+        accepted = self.__accept(expected)
         if accepted:
-            self.next()
+            self.__next()
         return accepted
 
-    def expect(self, expected, token=None):
+    def __expect(self, expected, token=None):
         """Demand that the next token is of the expected type (and optionally value) and throw an error otherwise"""
-        token = token or self.next()
+        token = token or self.__next()
         if isinstance(expected, type) and isinstance(token, expected):
             return token
         elif expected == token:
