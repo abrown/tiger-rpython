@@ -1,0 +1,12 @@
+(print_int(2 + 1); print("\n");
+ print_int(2 - 1); print("\n");
+ print_int(2 * 1); print("\n");
+ print_int(2 / 1); print("\n");
+ print_int(1 + 2 * 3); print("\n");
+ print_int((1 + 2) * 3); print("\n");
+ print_int(2 - 1 * 2); print("\n");
+ print_int((2 - 1) * 2); print("\n");
+ print_int(3 + 6 / 3); print("\n");
+ print_int((3 + 6) / 3); print("\n");
+ print_int(6 - 3 / 3); print("\n");
+ print_int((6 - 3) / 3); print("\n"))
