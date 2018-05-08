@@ -115,14 +115,14 @@ class Tokenizer:
     def is_number(c):
         if not c:
             return False
-        c_ = ord(c)
+        c_ = ord(c[0])  # note: there should only be one character here but RPython wants us to make this explicit
         return 48 <= c_ <= 57
 
     @staticmethod
     def is_letter(c):
         if not c:
             return False
-        c_ = ord(c)
+        c_ = ord(c[0])  # note: there should only be one character here but RPython wants us to make this explicit
         return (65 <= c_ <= 90) or (97 <= c_ <= 122)  # uppercase ASCII, lowercase ASCII
 
     @staticmethod
