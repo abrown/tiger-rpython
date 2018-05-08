@@ -1,0 +1,5 @@
+(print_int(0); print("\n");
+ print_int(42); print("\n");
+ print_int(127); print("\n");
+ print_int(32767); print("\n");
+ print_int(2147483647); print("\n"))
