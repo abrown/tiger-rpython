@@ -29,12 +29,12 @@ class Literal(Exp):
 
 class NilValue(Literal):
     def __init__(self):
-        super().__init__(None)
+        Literal.__init__(self, None)
 
 
 class IntegerValue(Literal):
     def __init__(self, value):
-        super().__init__(int(value))
+        Literal.__init__(self, int(value))
 
 
 class StringValue(Literal):
