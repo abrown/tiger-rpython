@@ -10,6 +10,12 @@ class Program:
             fields.append('%s=%s' % (key, self.__dict__[key]))
         return '%s(%s)' % (self.__class__.__name__, ', '.join(fields))
 
+    def evaluate(self):
+        pass
+
+    def to_string(self):
+        return self.__class__.__name__
+
 
 class Exp(Program):
     pass
@@ -20,25 +26,45 @@ class Declaration(Program):
 
 
 class Literal(Exp):
-    def __init__(self, value):
-        self.value = value
+    def __init__(self):
+        pass
+
+    def value(self):
+        pass
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, str(self.value))
+        return '%s(%s)' % (self.__class__.__name__, str(self.value()))
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.value() == other.value()
+        return False
 
 
 class NilValue(Literal):
     def __init__(self):
-        Literal.__init__(self, None)
+        Literal.__init__(self)
+
+    def value(self):
+        return None
 
 
 class IntegerValue(Literal):
     def __init__(self, value):
-        Literal.__init__(self, int(value))
+        Literal.__init__(self)
+        self.integer = int(value)
+
+    def value(self):
+        return self.integer
 
 
 class StringValue(Literal):
-    pass
+    def __init__(self, value):
+        Literal.__init__(self)
+        self.string = value
+
+    def value(self):
+        return self.string
 
 
 class Operation(Exp):

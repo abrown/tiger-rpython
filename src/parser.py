@@ -107,7 +107,7 @@ class Parser:
             elif token.value == 'import':
                 return self.import_declaration()
             else:
-                raise ExpectationError('Expected keyword in {type, var, function, import}', token)
+                raise ExpectationError('keyword in {type, var, function, import}', token)
         else:
             return None
 
@@ -343,7 +343,7 @@ class Parser:
             id = self.__expect_type(IdentifierToken)
             return ArrayType(id.value)
         else:
-            raise ExpectationError('Expected a type definition', token)
+            raise ExpectationError('a type definition', token)
 
     def type_declaration(self):
         self.__expect(KeywordToken('type'))
@@ -410,7 +410,7 @@ class Parser:
     def __accept_type(self, expected_type, token=None):
         """Check if the given token (or the next peeked token, if none is passed) is of a certain type or has a certain
         value"""
-        assert isinstance(expected_type, type)
+        # assert isinstance(expected_type, type)
         token = token or self.tokenizer.peek()
         return isinstance(token, expected_type)
 
@@ -427,13 +427,13 @@ class Parser:
         if expected == token:
             return token
         else:
-            raise ExpectationError(expected, token)
+            raise ExpectationError(expected.to_string(), token)
 
     def __expect_type(self, expected_type, token=None):
         """Demand that the next token is of the expected type (and optionally value) and throw an error otherwise"""
-        assert isinstance(expected_type, type)
+        # assert isinstance(expected_type, type)
         token = token or self.__next()
         if isinstance(token, expected_type):
             return token
         else:
-            raise ExpectationError(expected_type, token)
+            raise ExpectationError(expected_type.__name__, token)
