@@ -41,6 +41,12 @@ class TestTokenizer(unittest.TestCase):
         self.assertEqual(sut.peek(3), None)
         self.assertEqual(sut.next(), NumberToken('2'))
 
+    def test_not_equal(self):
+        self.assertTokenizesTo('2 <> 1', [NumberToken('2'), SymbolToken('<>'), NumberToken('1')])
+
+    def test_less_than(self):
+        self.assertTokenizesTo('a <= b', [IdentifierToken('a'), SymbolToken('<='), IdentifierToken('b')])
+
 
 if __name__ == '__main__':
     unittest.main()
