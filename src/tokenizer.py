@@ -79,6 +79,7 @@ class Tokenizer:
                 location = self.current_location()
                 d = self.__advance()
                 if c == '<' and d in '>=':
+                    self.__advance()
                     return SymbolToken(c + d, location)
                 elif c in '>:' and d == '=':
                     self.__advance()
