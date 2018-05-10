@@ -58,8 +58,6 @@ class Tokenizer:
                 pass
             elif self.is_eol(c):
                 self.__newline()  # do line accounting
-            elif self.is_slash(c):
-                self.__comment()  # advance until end of comment
             elif self.is_quote(c):
                 location = self.current_location()
                 return StringToken(self.__string(), location)
@@ -78,7 +76,9 @@ class Tokenizer:
             elif self.is_symbol(c):
                 location = self.current_location()
                 d = self.__advance()
-                if c == '<' and d in '>=':
+                if c == '/' and d == '*':
+                    self.__comment()  # advance until end of comment
+                elif c == '<' and d in '>=':
                     self.__advance()
                     return SymbolToken(c + d, location)
                 elif c in '>:' and d == '=':
@@ -103,10 +103,6 @@ class Tokenizer:
     @staticmethod
     def is_eol(c):
         return c == '\n' or c == '\r'
-
-    @staticmethod
-    def is_slash(c):
-        return c == '/'
 
     @staticmethod
     def is_quote(c):
@@ -143,17 +139,13 @@ class Tokenizer:
 
     def __comment(self):
         """Advance until end of comments (including nesting)"""
-        c = self.__advance()
-        if c != '*':
-            raise TokenError('Expected comment; / without *', self.current_location())
-        else:
-            comment_level = 1
-            while comment_level:
-                self.__advance_until('/')
-                if self.__previous_character() == '*':
-                    comment_level -= 1
-                elif self.__next_character() == '*':
-                    comment_level += 1
+        comment_level = 1
+        while comment_level:
+            self.__advance_until('/')
+            if self.__previous_character() == '*':
+                comment_level -= 1
+            elif self.__next_character() == '*':
+                comment_level += 1
 
     def __string(self):
         s = []  # TODO benchmark list append vs string concat (e.g. +=)

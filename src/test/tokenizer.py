@@ -32,7 +32,7 @@ class TestTokenizer(unittest.TestCase):
         self.assertTokenizesTo('a := b', [IdentifierToken('a'), SymbolToken(':='), IdentifierToken('b')])
 
     def test_peeking(self):
-        sut = Tokenizer("2 + 2")
+        sut = Tokenizer('2 + 2')
 
         self.assertEqual(sut.peek(), NumberToken('2'))
         self.assertEqual(sut.peek(), sut.peek(0))
@@ -46,6 +46,13 @@ class TestTokenizer(unittest.TestCase):
 
     def test_less_than(self):
         self.assertTokenizesTo('a <= b', [IdentifierToken('a'), SymbolToken('<='), IdentifierToken('b')])
+
+    def test_division(self):
+        self.assertTokenizesTo('a / b', [IdentifierToken('a'), SymbolToken('/'), IdentifierToken('b')])
+
+    def test_comments(self):
+        self.assertTokenizesTo('a /* ... */ b', [IdentifierToken('a'), IdentifierToken('b')])
+        self.assertTokenizesTo('/ /* ... /* ... */ ... */ /', [SymbolToken('/'), SymbolToken('/')])
 
 
 if __name__ == '__main__':
