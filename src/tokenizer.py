@@ -1,14 +1,19 @@
+from src.rpythonized_object import RPythonizedObject
 from src.tokens import NumberToken, IdentifierToken, KeywordToken, SymbolToken, StringToken
 
 
-class Location:
+class Location(RPythonizedObject):
     def __init__(self, offset, line, file):
         self.offset = offset
         self.line = line
         self.file = file
 
-    def __repr__(self):
+    def to_string(self):
         return "%s:%s" % (self.file if self.file else "<code string>", self.line)
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.offset == other.offset and self.line == other.line \
+               and self.file == other.file
 
 
 class TokenError(Exception):

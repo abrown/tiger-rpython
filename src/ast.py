@@ -231,7 +231,7 @@ class If(Exp):
     def to_string(self):
         return '%s(condition=%s, body_if_true=%s, body_if_false=%s)' % (
             self.__class__.__name__, self.condition.to_string(), self.body_if_true.to_string(),
-            self.body_if_false.to_string())
+            self.body_if_false.to_string() if self.body_if_false else 'None')
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.condition.equals(

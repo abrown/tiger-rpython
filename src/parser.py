@@ -409,7 +409,7 @@ class Parser:
         """Check if the given token (or the next peeked token, if none is passed) is of a certain type or has a certain
         value"""
         token = token or self.tokenizer.peek()
-        return expected == token  # TODO rpythonize
+        return expected.equals(token)
 
     def __accept_type(self, expected_type, token=None):
         """Check if the given token (or the next peeked token, if none is passed) is of a certain type or has a certain
@@ -428,7 +428,7 @@ class Parser:
     def __expect(self, expected, token=None):
         """Demand that the next token is of the expected type (and optionally value) and throw an error otherwise"""
         token = token or self.__next()
-        if expected == token:
+        if expected.equals(token):
             return token
         else:
             raise ExpectationError(expected.to_string(), token)
