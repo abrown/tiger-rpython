@@ -1,14 +1,19 @@
+from src.rpythonized_object import RPythonizedObject
 from src.tokens import NumberToken, IdentifierToken, KeywordToken, SymbolToken, StringToken
 
 
-class Location:
+class Location(RPythonizedObject):
     def __init__(self, offset, line, file):
         self.offset = offset
         self.line = line
         self.file = file
 
-    def __repr__(self):
+    def to_string(self):
         return "%s:%s" % (self.file if self.file else "<code string>", self.line)
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.offset == other.offset and self.line == other.line \
+               and self.file == other.file
 
 
 class TokenError(Exception):
@@ -112,14 +117,14 @@ class Tokenizer:
     def is_number(c):
         if not c:
             return False
-        c_ = ord(c)
+        c_ = ord(c[0])  # note: there should only be one character here but RPython wants us to make this explicit
         return 48 <= c_ <= 57
 
     @staticmethod
     def is_letter(c):
         if not c:
             return False
-        c_ = ord(c)
+        c_ = ord(c[0])  # note: there should only be one character here but RPython wants us to make this explicit
         return (65 <= c_ <= 90) or (97 <= c_ <= 122)  # uppercase ASCII, lowercase ASCII
 
     @staticmethod

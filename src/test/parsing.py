@@ -146,6 +146,14 @@ class TestParsing(unittest.TestCase):
         self.assertParsesTo('let var x := 1 in y(); z() end', Let([VariableDeclaration('x', None, IntegerValue(1))],
                                                                   [FunctionCall('y', []), FunctionCall('z', [])]))
 
+    def test_equality_of_literals(self):
+        self.assertEqual(IntegerValue(42), IntegerValue(42))
+        self.assertEqual(StringValue('abc'), StringValue('abc'))
+        self.assertNotEqual(IntegerValue(42), IntegerValue(99))
+
+    def test_equality_of_lvalues(self):
+        self.assertEqual(LValue('a'), LValue('a'))
+
 
 if __name__ == '__main__':
     unittest.main()

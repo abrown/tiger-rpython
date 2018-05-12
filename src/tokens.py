@@ -1,19 +1,17 @@
-class Token:
+from src.rpythonized_object import RPythonizedObject
+
+
+class Token(RPythonizedObject):
     def __init__(self, value=None, location=None):
         self.value = value
         self.location = location
 
-    def __repr__(self):
-        return "%s%s at %s" % (self.__class__.__name__, "=" + self.value if self.value else "", self.location)
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        elif self.value != other.value:
-            return False
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.value == other.value
         # TODO may be more honest to compare locations as well
-        else:
-            return True
+
+    def to_string(self):
+        return "%s%s at %s" % (self.__class__.__name__, "=" + self.value if self.value else "", self.location)
 
 
 class EofToken(Token):

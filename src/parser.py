@@ -11,9 +11,13 @@ class ParseError(Exception):
     def __init__(self, reason, token):
         self.reason = reason
         self.token = token
-
+    
+    def to_string(self):
+        return self.reason + " at token " + self.token.to_string()
+        # TODO sub-class from RPythonizedObject?
+    
     def __str__(self):
-        return self.reason + " at token " + str(self.token)
+        return self.to_string()
 
 
 class ExpectationError(ParseError):
@@ -21,8 +25,8 @@ class ExpectationError(ParseError):
         self.expected = expected
         self.token = token
 
-    def __str__(self):
-        return 'Expected %s but did not find it at %s' % (self.expected, self.token)
+    def to_string(self):
+        return 'Expected %s but did not find it at %s' % (self.expected, self.token.to_string())
 
 
 PRECEDENCE = {
@@ -96,7 +100,7 @@ class Parser:
         return ArrayLValue(exp, next)
 
     def declaration(self):
-        if self.__accept(KeywordToken):
+        if self.__accept_type(KeywordToken):
             token = self.__peek()
             if token.value == 'type':
                 return self.type_declaration()
@@ -107,7 +111,7 @@ class Parser:
             elif token.value == 'import':
                 return self.import_declaration()
             else:
-                raise ExpectationError('Expected keyword in {type, var, function, import}', token)
+                raise ExpectationError('keyword in {type, var, function, import}', token)
         else:
             return None
 
@@ -150,18 +154,18 @@ class Parser:
     def expression_without_precedence(self):
         if self.__accept(KeywordToken('nil')):
             return NilValue()
-        elif self.__accept(NumberToken):
+        elif self.__accept_type(NumberToken):
             token = self.__next()
             return IntegerValue(token.value)
         elif self.__accept_and_consume(SymbolToken('-')):
             token = self.__next()
             return IntegerValue('-' + token.value)
-        elif self.__accept(StringToken):
+        elif self.__accept_type(StringToken):
             token = self.__next()
             return StringValue(token.value)
         elif self.__accept(SymbolToken('(')):
             return self.sequence()
-        elif self.__accept(IdentifierToken):
+        elif self.__accept_type(IdentifierToken):
             return self.id_started()
         elif self.__accept(KeywordToken('new')):
             return self.object()
@@ -186,7 +190,7 @@ class Parser:
 
     def for_do(self):
         self.__expect(KeywordToken('for'))
-        var = self.__expect(IdentifierToken)
+        var = self.__expect_type(IdentifierToken)
         self.__expect(SymbolToken(':='))
         start = self.expression()
         self.__expect(KeywordToken('to'))
@@ -214,7 +218,7 @@ class Parser:
         return FunctionDeclaration(id, params, return_type, exp)
 
     def id(self):
-        token = self.__expect(IdentifierToken)
+        token = self.__expect_type(IdentifierToken)
         return token.value
 
     def id_field(self):
@@ -288,7 +292,7 @@ class Parser:
 
     def object(self):
         self.__expect(KeywordToken('new'))
-        type_id = self.__expect(IdentifierToken)
+        type_id = self.__expect_type(IdentifierToken)
         return ObjectCreation(TypeId(type_id.value))
 
     def operation(self, operation, left, right):
@@ -299,10 +303,10 @@ class Parser:
         return PRECEDENCE[token.value]
 
     def record(self):
-        type = self.__expect(IdentifierToken)
+        type = self.__expect_type(IdentifierToken)
         self.__expect(SymbolToken('{'))
         fields = {}
-        while self.__accept(IdentifierToken):
+        while self.__accept_type(IdentifierToken):
             id, exp = self.id_field()
             fields[id] = exp
             token2 = self.__next()
@@ -316,7 +320,7 @@ class Parser:
         return RecordCreation(TypeId(type.value), fields)
 
     def record_lvalue(self):
-        id = self.__expect(IdentifierToken)
+        id = self.__expect_type(IdentifierToken)
         next = self.lvalue_next()
         return RecordLValue(id.value, next)
 
@@ -334,16 +338,16 @@ class Parser:
 
     def type(self):
         token = self.__next()
-        if self.__accept(IdentifierToken, token):
+        if self.__accept_type(IdentifierToken, token):
             return TypeId(token.value)
         elif self.__accept(SymbolToken('{'), token):
             return RecordType(self.type_fields())
         elif self.__accept(KeywordToken('array'), token):
             self.__expect(KeywordToken('of'))
-            id = self.__expect(IdentifierToken)
+            id = self.__expect_type(IdentifierToken)
             return ArrayType(id.value)
         else:
-            raise ExpectationError('Expected a type definition', token)
+            raise ExpectationError('a type definition', token)
 
     def type_declaration(self):
         self.__expect(KeywordToken('type'))
@@ -353,7 +357,7 @@ class Parser:
         return TypeDeclaration(id, ty)
 
     def type_fields(self):
-        if self.__accept(IdentifierToken):
+        if self.__accept_type(IdentifierToken):
             type_fields = {}
             name, type_id = self.type_field()
             type_fields[name] = type_id
@@ -371,7 +375,7 @@ class Parser:
         return id, type
 
     def type_id(self):
-        type_id = self.__expect(IdentifierToken)
+        type_id = self.__expect_type(IdentifierToken)
         return TypeId(type_id.value)
 
     def variable_declaration(self):
@@ -405,10 +409,14 @@ class Parser:
         """Check if the given token (or the next peeked token, if none is passed) is of a certain type or has a certain
         value"""
         token = token or self.tokenizer.peek()
-        if (isinstance(expected, type) and isinstance(token, expected)) or expected == token:
-            return True
-        else:
-            return False
+        return expected.equals(token)
+
+    def __accept_type(self, expected_type, token=None):
+        """Check if the given token (or the next peeked token, if none is passed) is of a certain type or has a certain
+        value"""
+        # assert isinstance(expected_type, type)
+        token = token or self.tokenizer.peek()
+        return isinstance(token, expected_type)
 
     def __accept_and_consume(self, expected):
         """Check if the next token is of a certain type or has a certain value; if it is, consume it"""
@@ -420,9 +428,16 @@ class Parser:
     def __expect(self, expected, token=None):
         """Demand that the next token is of the expected type (and optionally value) and throw an error otherwise"""
         token = token or self.__next()
-        if isinstance(expected, type) and isinstance(token, expected):
-            return token
-        elif expected == token:
+        if expected.equals(token):
             return token
         else:
-            raise ExpectationError(expected, token)
+            raise ExpectationError(expected.to_string(), token)
+
+    def __expect_type(self, expected_type, token=None):
+        """Demand that the next token is of the expected type (and optionally value) and throw an error otherwise"""
+        # assert isinstance(expected_type, type)
+        token = token or self.__next()
+        if isinstance(token, expected_type):
+            return token
+        else:
+            raise ExpectationError(expected_type.__name__, token)
