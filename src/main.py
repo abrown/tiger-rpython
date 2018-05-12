@@ -1,8 +1,7 @@
 import os
 import sys
 
-from src.parser import Parser
-
+from src.parser import Parser, ParseError
 
 # Begin RPython setup; catch import errors so this can still run in CPython...
 try:
@@ -63,15 +62,22 @@ def read_file(filename):
 
 def main(argv):
     """Parse and run any E2 program"""
-
-    # parse input program
+    
+    # check for arguments
     try:
         file = argv[1]
     except IndexError:
-        print("Expected one file name argument to be passed, e.g. ./e2 program.e2")
-        raise RuntimeError
+        print("Expected one file name argument to be passed, e.g. ./parser program.tig")
+        return 40
+
     program_contents = read_file(argv[1])
-    program = Parser(program_contents).parse()
+    
+    # parse input program
+    try:
+        program = Parser(program_contents).parse()
+    except ParseError as e:
+        print("Parse failure: %s" % e.to_string())
+        return 42
 
     # set debug level
     debug_level = 0
@@ -89,7 +95,8 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    code = main(sys.argv)
+    sys.exit(code)
 
 
 def target(*args):

@@ -11,9 +11,13 @@ class ParseError(Exception):
     def __init__(self, reason, token):
         self.reason = reason
         self.token = token
-
+    
+    def to_string(self):
+        return self.reason + " at token " + self.token.to_string()
+        # TODO sub-class from RPythonizedObject?
+    
     def __str__(self):
-        return self.reason + " at token " + str(self.token)
+        return self.to_string()
 
 
 class ExpectationError(ParseError):
@@ -21,8 +25,8 @@ class ExpectationError(ParseError):
         self.expected = expected
         self.token = token
 
-    def __str__(self):
-        return 'Expected %s but did not find it at %s' % (self.expected, self.token)
+    def to_string(self):
+        return 'Expected %s but did not find it at %s' % (self.expected, self.token.to_string())
 
 
 PRECEDENCE = {
