@@ -11,7 +11,8 @@ class Token(RPythonizedObject):
         # TODO may be more honest to compare locations as well
 
     def to_string(self):
-        return "%s%s at %s" % (self.__class__.__name__, "=" + self.value if self.value else "", self.location)
+        return "%s%s%s" % (self.__class__.__name__, "=" + self.value if self.value else "",
+                           ' at ' + self.location.to_string() if self.location else '')
 
 
 class EofToken(Token):

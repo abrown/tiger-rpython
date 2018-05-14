@@ -136,6 +136,75 @@ class TestParsing(unittest.TestCase):
                                  VariableDeclaration('b', None, IntegerValue(2))],
                                 [FunctionCall('print', [LValue('a')])]))
 
+    def test_let_complex_declarations(self):
+        merge_snippet = """
+        let 
+            type any = {any : int}
+            var buffer := getchar()
+            
+            function readint(any: any) : int =
+                let var i := 0
+                 function isdigit(s : string) : int = 
+                      ord(buffer)>=ord("0") & ord(buffer)<=ord("9")
+                 function skipto() =
+                   while buffer=" " | buffer="\n"
+                     do buffer := getchar()
+                in skipto();
+                 any.any := isdigit(buffer);
+                 while isdigit(buffer)
+                   do (i := i*10+ord(buffer)-ord("0"); buffer := getchar());
+                 i
+                end
+
+            type list = {first: int, rest: list}
+
+        /* ... */
+           
+        in 
+            /* BODY OF MAIN PROGRAM */
+            printlist(merge(list1,list2))
+        end
+        """
+
+        expected = Let(
+            [TypeDeclaration('any', RecordType({'any': TypeId('int')})),
+             VariableDeclaration('buffer', None, FunctionCall('getchar', args=[])),
+             FunctionDeclaration('readint', {'any': TypeId('any')}, TypeId('int'), Let(
+                 declarations=[VariableDeclaration('i', None, IntegerValue(0)),
+                               FunctionDeclaration('isdigit', {'s': TypeId('string')}, TypeId('int'), And(
+                                   GreaterThanOrEquals(FunctionCall('ord', args=[LValue('buffer', None)]),
+                                                       FunctionCall('ord', args=[StringValue('0')])),
+                                   LessThanOrEquals(FunctionCall('ord', args=[LValue('buffer', None)]),
+                                                    FunctionCall('ord', args=[StringValue('9')])))),
+                               FunctionDeclaration('skipto', {}, None, While(
+                                   Or(Equals(LValue('buffer', None), StringValue(" ")),
+                                      Equals(LValue('buffer', None), StringValue("\n"))),
+                                   Assign(LValue('buffer', None), FunctionCall('getchar', args=[]))))],
+                 expressions=[FunctionCall('skipto', args=[]), Assign(LValue('any', RecordLValue('any', None)),
+                                                                      FunctionCall('isdigit',
+                                                                                   args=[LValue('buffer', None)])),
+                              While(FunctionCall('isdigit', args=[LValue('buffer', None)]), Sequence(expressions=[
+                                  Assign(LValue('i', None), Add(Multiply(LValue('i', None), IntegerValue(10)), Subtract(
+                                      FunctionCall('ord', args=[LValue('buffer', None)]),
+                                      FunctionCall('ord', args=[StringValue('0')])))),
+                                  Assign(LValue('buffer', None), FunctionCall('getchar', args=[]))])),
+                              LValue('i', None)])),
+             TypeDeclaration('list', RecordType({'first': TypeId('int'), 'rest': TypeId('list')}))], expressions=[
+                FunctionCall('printlist',
+                             args=[FunctionCall('merge', args=[LValue('list1', None), LValue('list2', None)])])])
+
+        self.assertParsesTo(merge_snippet, expected)
+
+    def test_record_type_equality(self):
+        a = RecordType({'any': TypeId('int')})
+        b = RecordType({'any': TypeId('int')})
+        self.assertEqual(a, b)
+
+    def test_string_equality(self):
+        a = StringValue('0')
+        b = StringValue('0')
+        self.assertEqual(a, b)
+
     def test_let_empty_declaration(self):
         self.assertParsesTo('let in x() end', Let([], [FunctionCall('x', [])]))
 

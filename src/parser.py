@@ -341,7 +341,9 @@ class Parser:
         if self.__accept_type(IdentifierToken, token):
             return TypeId(token.value)
         elif self.__accept(SymbolToken('{'), token):
-            return RecordType(self.type_fields())
+            type_fields = self.type_fields()
+            self.__expect(SymbolToken('}'))
+            return RecordType(type_fields)
         elif self.__accept(KeywordToken('array'), token):
             self.__expect(KeywordToken('of'))
             id = self.__expect_type(IdentifierToken)
