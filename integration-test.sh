@@ -3,11 +3,9 @@
 export PYTHONPATH=.
 python_value=$(python src/main.py $1 2>&1)
 python_code=$?
-#python_hash=$(echo -e ${python_value} | md5sum}
 
 rpython_value=$(bin/parser $1 2>&1)
 rpython_code=$?
-#rpython_hash=$(echo -e ${rpython_value} | md5sum}
 
 if [ ${DEBUG} ]; then
 	echo -e "\tPython (code: $python_code):   $python_value"
