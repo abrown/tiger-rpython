@@ -18,6 +18,7 @@ def list_equals(list1, list2):
     else:
         for i in range(len(list1)):
             if not list1[i].equals(list2[i]):
+                print("not equal: %s" % list1[i].to_string())
                 return False
     return True
 
@@ -33,6 +34,15 @@ def dict_equals(dict1, dict2):
     return True
 
 
+def nullable_equals(obj1, obj2):
+    if obj1 is None and obj2 is None:
+        return True
+    elif obj1 is not None and obj2 is not None:
+        return obj1.equals(obj2)
+    else:
+        return False
+
+
 def list_to_string(list):
     stringified = []
     for item in list:
@@ -45,6 +55,10 @@ def dict_to_string(dict):
     for key in dict:
         stringified.append(key + '=' + dict[key].to_string())
     return '{%s}' % (', '.join(stringified))
+
+
+def nullable_to_string(obj):
+    return obj.to_string() if obj is not None else 'None'
 
 
 class Exp(Program):
@@ -108,7 +122,8 @@ class ArrayCreation(Exp):
         self.type = type
 
     def to_string(self):
-        return '%s(outer=%s, inner=%s, type=%s)' % (self.__class__.__name__, self.outer, self.inner, self.type)
+        return '%s(outer=%s, inner=%s, type=%s)' % (
+            self.__class__.__name__, self.outer.to_string(), self.inner.to_string(), self.type.to_string())
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.outer.equals(other.outer) and self.inner.equals(
@@ -121,10 +136,11 @@ class RecordCreation(Exp):
         self.fields = fields
 
     def to_string(self):
-        return '%s(type=%s, fields=%s)' % (self.__class__.__name__, self.type, dict_to_string(self.fields))
+        return '%s(type=%s, fields=%s)' % (self.__class__.__name__, self.type.to_string(), dict_to_string(self.fields))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.type.equals(other.type) and dict_equals(self.fields, other.fields)
+        return RPythonizedObject.equals(self, other) and self.type.equals(other.type) and dict_equals(self.fields,
+                                                                                                      other.fields)
 
 
 class ObjectCreation(Exp):
@@ -132,7 +148,7 @@ class ObjectCreation(Exp):
         self.type = type
 
     def to_string(self):
-        return '%s(type=%s)' % (self.__class__.__name__, self.type)
+        return '%s(type=%s)' % (self.__class__.__name__, self.type.to_string())
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.type.equals(other.type)
@@ -156,11 +172,11 @@ class LValue(Exp):
 
     def to_string(self):
         return '%s(name=%s, next=%s)' % (
-            self.__class__.__name__, self.name, self.next.to_string() if self.next else 'None')
+            self.__class__.__name__, self.name, nullable_to_string(self.next))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name and (
-                not self.next or self.next.equals(other.next))
+        return RPythonizedObject.equals(self, other) and self.name == other.name \
+            and nullable_equals(self.next, other.next)
 
 
 class RecordLValue(LValue):
@@ -174,11 +190,11 @@ class ArrayLValue(LValue):
 
     def to_string(self):
         return '%s(exp=%s, next=%s)' % (
-            self.__class__.__name__, self.exp, self.next.to_string() if self.next else 'None')
+            self.__class__.__name__, self.exp.to_string(), nullable_to_string(self.next))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.exp.equals(other.exp) and (
-                not self.next or self.next.equals(other.next))
+        return RPythonizedObject.equals(self, other) and self.exp.equals(other.exp) \
+               and nullable_equals(self.next, other.next)
 
 
 class FunctionCall(Exp):
@@ -231,12 +247,12 @@ class If(Exp):
     def to_string(self):
         return '%s(condition=%s, body_if_true=%s, body_if_false=%s)' % (
             self.__class__.__name__, self.condition.to_string(), self.body_if_true.to_string(),
-            self.body_if_false.to_string() if self.body_if_false else 'None')
+            nullable_to_string(self.body_if_false))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.condition.equals(
-            other.condition) and self.body_if_true.equals(other.body_if_true) and (
-                       not self.body_if_false or self.body_if_false.equals(other.body_if_false))
+        return RPythonizedObject.equals(self, other) and self.condition.equals(other.condition) \
+               and self.body_if_true.equals(other.body_if_true) \
+               and nullable_equals(self.body_if_false, other.body_if_false)
 
 
 class While(Exp):
@@ -294,10 +310,10 @@ class TypeDeclaration(Declaration):
         self.type = type
 
     def to_string(self):
-        return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, self.type)
+        return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, self.type.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name and self.type == other.type
+        return RPythonizedObject.equals(self, other) and self.name == other.name and self.type.equals(other.type)
 
 
 class VariableDeclaration(Declaration):
@@ -307,11 +323,12 @@ class VariableDeclaration(Declaration):
         self.exp = exp
 
     def to_string(self):
-        return '%s(name=%s, type=%s, exp=%s)' % (self.__class__.__name__, self.name, self.type, self.exp.to_string())
+        return '%s(name=%s, type=%s, exp=%s)' % (
+            self.__class__.__name__, self.name, nullable_to_string(self.type), self.exp.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name and self.type == other.type \
-               and self.exp.equals(other.exp)
+        return RPythonizedObject.equals(self, other) and self.name == other.name \
+               and nullable_equals(self.type, other.type) and self.exp.equals(other.exp)
 
 
 class FunctionDeclaration(Declaration):
@@ -323,13 +340,13 @@ class FunctionDeclaration(Declaration):
 
     def to_string(self):
         return '%s(name=%s, parameters=%s, return_type=%s, body=%s)' % (
-            self.__class__.__name__, self.name, dict_to_string(self.parameters), self.return_type,
+            self.__class__.__name__, self.name, dict_to_string(self.parameters), nullable_to_string(self.return_type),
             self.body.to_string())
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
-               and dict_equals(self.parameters, other.parameters) and (
-                           not self.return_type or self.return_type.equals(other.return_type)) \
+               and dict_equals(self.parameters, other.parameters) \
+               and nullable_equals(self.return_type, other.return_type) \
                and self.body.equals(other.body)
 
 
