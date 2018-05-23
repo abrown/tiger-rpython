@@ -1,0 +1,9 @@
+let
+  function a(n:int) : int = n + 1
+  function b(n:int) : int = a(n) + 1
+  function c(n:int) : int = b(n) + 1
+  function d(n:int) : int = c(n) + 1
+  var result : int := d(0)
+in
+  print(result)
+end

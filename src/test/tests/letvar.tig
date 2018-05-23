@@ -1,0 +1,5 @@
+let
+  var a : int := 1
+in
+  print(a)
+end
