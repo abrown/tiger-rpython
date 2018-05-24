@@ -61,8 +61,8 @@ OPERATORS = {
 
 
 class Parser:
-    def __init__(self, text):
-        self.tokenizer = Tokenizer(text)
+    def __init__(self, text, file=None):
+        self.tokenizer = Tokenizer(text, file)
 
     def parse(self):
         return self.expression()
