@@ -1,0 +1,8 @@
+let
+  function a() : int = 1
+  function b() : int = 2
+  function c() : int = 3
+  function d() : int = 4
+in
+  print(a() + b() + c() + d())
+end

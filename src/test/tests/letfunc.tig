@@ -1,0 +1,5 @@
+let
+  function a() : int = 1
+in
+  print(a())
+end
