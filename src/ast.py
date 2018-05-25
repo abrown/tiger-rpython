@@ -69,7 +69,7 @@ class Declaration(Program):
     pass
 
 
-class Literal(Exp):
+class Value(Exp):
     def __init__(self):
         pass
 
@@ -79,10 +79,13 @@ class Literal(Exp):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.value() == other.value()
 
+    def evaluate(self):
+        return self
 
-class NilValue(Literal):
+
+class NilValue(Value):
     def __init__(self):
-        Literal.__init__(self)
+        Value.__init__(self)
 
     def value(self):
         return None
@@ -91,9 +94,9 @@ class NilValue(Literal):
         return '%s' % (self.__class__.__name__,)
 
 
-class IntegerValue(Literal):
+class IntegerValue(Value):
     def __init__(self, value):
-        Literal.__init__(self)
+        Value.__init__(self)
         self.integer = int(value)
 
     def value(self):
@@ -103,9 +106,9 @@ class IntegerValue(Literal):
         return '%s(%d)' % (self.__class__.__name__, self.integer)
 
 
-class StringValue(Literal):
+class StringValue(Value):
     def __init__(self, value):
-        Literal.__init__(self)
+        Value.__init__(self)
         self.string = value
 
     def value(self):
@@ -176,7 +179,7 @@ class LValue(Exp):
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
-            and nullable_equals(self.next, other.next)
+               and nullable_equals(self.next, other.next)
 
 
 class RecordLValue(LValue):
@@ -394,50 +397,90 @@ class BinaryOperation(Exp):
     def to_string(self):
         return '%s(left=%s, right=%s)' % (self.__class__.__name__, self.left.to_string(), self.right.to_string())
 
+    # TODO inline
+    def evaluate_sides_to_value(self):
+        left_value = self.left.evaluate()
+        assert isinstance(left_value, Value)
+        right_value = self.right.evaluate()
+        assert isinstance(right_value, Value)
+        return left_value, right_value
+
+    # TODO inline
+    def evaluate_sides_to_int(self):
+        left_value = self.left.evaluate()
+        assert isinstance(left_value, IntegerValue)
+        right_value = self.right.evaluate()
+        assert isinstance(right_value, IntegerValue)
+        return left_value.integer, right_value.integer
+
 
 class Multiply(BinaryOperation):
-    pass
+    def evaluate(self):
+        (left_int, right_int) = self.evaluate_sides_to_int()
+        return IntegerValue(left_int * right_int)
 
 
 class Divide(BinaryOperation):
-    pass
+    def evaluate(self):
+        (left_int, right_int) = self.evaluate_sides_to_int()
+        return IntegerValue(left_int // right_int)
 
 
 class Add(BinaryOperation):
-    pass
+    def evaluate(self):
+        (left_int, right_int) = self.evaluate_sides_to_int()
+        return IntegerValue(left_int + right_int)
 
 
 class Subtract(BinaryOperation):
-    pass
+    def evaluate(self):
+        (left_int, right_int) = self.evaluate_sides_to_int()
+        return IntegerValue(left_int - right_int)
 
 
 class GreaterThanOrEquals(BinaryOperation):
-    pass
+    def evaluate(self):
+        (left_int, right_int) = self.evaluate_sides_to_int()
+        return IntegerValue(1) if left_int >= right_int else IntegerValue(0)
 
 
 class LessThanOrEquals(BinaryOperation):
-    pass
+    def evaluate(self):
+        (left_int, right_int) = self.evaluate_sides_to_int()
+        return IntegerValue(1) if left_int <= right_int else IntegerValue(0)
 
 
 class Equals(BinaryOperation):
-    pass
+    def evaluate(self):
+        (left, right) = self.evaluate_sides_to_value()
+        return IntegerValue(1) if left.equals(right) else IntegerValue(0)
 
 
 class NotEquals(BinaryOperation):
-    pass
+    def evaluate(self):
+        (left, right) = self.evaluate_sides_to_value()
+        return IntegerValue(1) if not left.equals(right) else IntegerValue(0)
 
 
 class GreaterThan(BinaryOperation):
-    pass
+    def evaluate(self):
+        (left_int, right_int) = self.evaluate_sides_to_int()
+        return IntegerValue(1) if left_int > right_int else IntegerValue(0)
 
 
 class LessThan(BinaryOperation):
-    pass
+    def evaluate(self):
+        (left_int, right_int) = self.evaluate_sides_to_int()
+        return IntegerValue(1) if left_int < right_int else IntegerValue(0)
 
 
 class And(BinaryOperation):
-    pass
+    def evaluate(self):
+        (left_int, right_int) = self.evaluate_sides_to_int()
+        return IntegerValue(1) if left_int and right_int else IntegerValue(0)
 
 
 class Or(BinaryOperation):
-    pass
+    def evaluate(self):
+        (left_int, right_int) = self.evaluate_sides_to_int()
+        return IntegerValue(1) if left_int or right_int else IntegerValue(0)
