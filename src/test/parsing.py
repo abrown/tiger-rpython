@@ -87,11 +87,12 @@ class TestParsing(unittest.TestCase):
         self.assertParsesTo('var a:int := 42', VariableDeclaration('a', TypeId('int'), IntegerValue(42)))
 
     def test_empty_function_declaration(self):
-        self.assertParsesTo('function x() = noop', FunctionDeclaration('x', {}, None, LValue('noop')))
+        self.assertParsesTo('function x() = noop', FunctionDeclaration('x', [], None, LValue('noop')))
 
     def test_function_declaration(self):
         self.assertParsesTo('function x(y:int, z:int):int = add(y, z)',
-                            FunctionDeclaration('x', {'y': TypeId('int'), 'z': TypeId('int')}, TypeId('int'),
+                            FunctionDeclaration('x', [FunctionParameter('y', TypeId('int')),
+                                                      FunctionParameter('z', TypeId('int'))], TypeId('int'),
                                                 FunctionCall('add', [LValue('y'), LValue('z')])))
 
     def test_type_declaration(self):
@@ -169,14 +170,14 @@ class TestParsing(unittest.TestCase):
         expected = Let(
             [TypeDeclaration('any', RecordType({'any': TypeId('int')})),
              VariableDeclaration('buffer', None, FunctionCall('getchar', args=[])),
-             FunctionDeclaration('readint', {'any': TypeId('any')}, TypeId('int'), Let(
+             FunctionDeclaration('readint', [FunctionParameter('any', TypeId('any'))], TypeId('int'), Let(
                  declarations=[VariableDeclaration('i', None, IntegerValue(0)),
-                               FunctionDeclaration('isdigit', {'s': TypeId('string')}, TypeId('int'), And(
+                               FunctionDeclaration('isdigit', [FunctionParameter('s', TypeId('string'))], TypeId('int'), And(
                                    GreaterThanOrEquals(FunctionCall('ord', args=[LValue('buffer', None)]),
                                                        FunctionCall('ord', args=[StringValue('0')])),
                                    LessThanOrEquals(FunctionCall('ord', args=[LValue('buffer', None)]),
                                                     FunctionCall('ord', args=[StringValue('9')])))),
-                               FunctionDeclaration('skipto', {}, None, While(
+                               FunctionDeclaration('skipto', [], None, While(
                                    Or(Equals(LValue('buffer', None), StringValue(" ")),
                                       Equals(LValue('buffer', None), StringValue("\n"))),
                                    Assign(LValue('buffer', None), FunctionCall('getchar', args=[]))))],

@@ -2,7 +2,7 @@ from src.ast import NilValue, IntegerValue, StringValue, ArrayCreation, TypeId, 
     ObjectCreation, FunctionCall, RecordLValue, ArrayLValue, Assign, If, While, For, Break, Let, \
     TypeDeclaration, ArrayType, VariableDeclaration, FunctionDeclaration, RecordType, Sequence, Multiply, Divide, Add, \
     Subtract, GreaterThanOrEquals, LessThanOrEquals, Equals, NotEquals, GreaterThan, LessThan, \
-    And, Or
+    And, Or, FunctionParameter
 from src.tokenizer import Tokenizer
 from src.tokens import NumberToken, IdentifierToken, KeywordToken, SymbolToken, StringToken
 
@@ -208,7 +208,7 @@ class Parser:
         self.__expect(KeywordToken('function'))
         id = self.id()
         self.__expect(SymbolToken('('))
-        params = self.type_fields()
+        params = self.parameters()
         self.__expect(SymbolToken(')'))
         return_type = None
         if self.__accept_and_consume(SymbolToken(':')):
@@ -298,6 +298,18 @@ class Parser:
     def operation(self, operation, left, right):
         operator_class = OPERATORS[operation]  # TODO probably will not work in RPython
         return operator_class(left, right)
+
+    def parameters(self):
+        if self.__accept_type(IdentifierToken):
+            parameters = []
+            name, type_id = self.type_field()
+            parameters.append(FunctionParameter(name, type_id))
+            while self.__accept_and_consume(SymbolToken(',')):
+                name, type_id = self.type_field()
+                parameters.append(FunctionParameter(name, type_id))
+            return parameters
+        else:
+            return []
 
     def precedence(self, token):
         return PRECEDENCE[token.value]
