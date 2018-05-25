@@ -77,6 +77,11 @@ class Exp(Program):
 
 
 class Declaration(Program):
+    def __init__(self, name):
+        self.name = name
+
+
+class Type(Program):
     pass
 
 
@@ -170,7 +175,7 @@ class ObjectCreation(Exp):
 
 class TypeId(Declaration):
     def __init__(self, name):
-        self.name = name
+        Declaration.__init__(self, name)
 
     def to_string(self):
         return '%s(name=%s)' % (self.__class__.__name__, self.name)
@@ -363,10 +368,22 @@ class Let(Exp):
                and list_equals(self.declarations, other.declarations) \
                and list_equals(self.expressions, other.expressions)
 
+    def evaluate(self, env=None):
+        if env is None:
+            raise InterpretationError('No environment in %s' % self.to_string())
+        for declaration in self.declarations:
+            assert isinstance(declaration, Declaration)
+            env.set(declaration.name, declaration)
+        value = None
+        for expression in self.expressions:
+            value = expression.evaluate(env)
+        # TODO reset environment
+        return value
+
 
 class TypeDeclaration(Declaration):
     def __init__(self, name, type):
-        self.name = name
+        Declaration.__init__(self, name)
         self.type = type
 
     def to_string(self):
@@ -407,7 +424,7 @@ class FunctionParameter(Declaration):
 
 class FunctionDeclaration(Declaration):
     def __init__(self, name, parameters, return_type, body):
-        self.name = name
+        Declaration.__init__(self, name)
         assert isinstance(parameters, list)
         self.parameters = parameters
         assert isinstance(return_type, TypeId) or return_type is None
@@ -429,8 +446,10 @@ class FunctionDeclaration(Declaration):
 
 class NativeFunctionDeclaration(Declaration):
     def __init__(self, name, parameters=[], return_type=None, function=None):
-        self.name = name
+        Declaration.__init__(self, name)
+        assert isinstance(parameters, list)
         self.parameters = parameters
+        assert isinstance(return_type, TypeId) or return_type is None
         self.return_type = return_type
         self.function = function
 
@@ -446,7 +465,7 @@ class NativeFunctionDeclaration(Declaration):
                and self.function == other.function
 
 
-class ArrayType(Declaration):
+class ArrayType(Type):
     def __init__(self, element_type):
         self.type_name = element_type
 
@@ -457,8 +476,9 @@ class ArrayType(Declaration):
         return RPythonizedObject.equals(self, other) and self.type_name == other.type_name
 
 
-class RecordType(Declaration):
+class RecordType(Type):
     def __init__(self, type_fields):
+        assert isinstance(type_fields, dict)
         self.type_fields = type_fields
 
     def to_string(self):
