@@ -2,6 +2,7 @@ import os
 import unittest
 
 from src.parser import Parser
+from src.environment import Environment
 
 
 class TestInterpreting(unittest.TestCase):
@@ -32,7 +33,7 @@ def parse_file(path):
     return parser.parse()
 
 
-def generate_test(path):
+def generate_expression_test(path):
     def test(self):
         program = parse_file(path)
         result = program.evaluate()
@@ -47,7 +48,34 @@ def generate_test(path):
 # dynamically add each test in 'expr-tests' as a method of TestInterpreting
 for f in list_test_files('expr-tests'):
     name = 'test_' + get_file_name(f)
-    test = generate_test(f)
+    test = generate_expression_test(f)
+    setattr(TestInterpreting, name, test)
+
+
+def generate_print_test(path):
+    def test(self):
+        program = parse_file(path)
+        stdout = ""
+
+        def tiger_print(s):
+            stdout += s
+
+        env = Environment()
+        env.set('print', NativeFunctionDeclaration(tiger_print))
+
+        program.evaluate(env)
+
+        expected = read_file(path.replace('.tig', '.out.bak'))
+
+        self.assertEqual(expected, stdout)
+
+    return test
+
+
+# dynamically add each test in 'expr-tests' as a method of TestInterpreting
+for f in list_test_files('print-tests'):
+    name = 'test_' + get_file_name(f)
+    test = generate_print_test(f)
     setattr(TestInterpreting, name, test)
 
 if __name__ == '__main__':

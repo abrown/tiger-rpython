@@ -353,6 +353,28 @@ class FunctionDeclaration(Declaration):
                and self.body.equals(other.body)
 
 
+class NativeFunctionDeclaration(Declaration):
+    def __init__(self, name, parameters=[], return_type=None, function=None):
+        self.name = name
+        self.parameters = parameters
+        self.return_type = return_type
+        self.function = function
+
+    def to_string(self):
+        return '%s(name=%s, parameters=%s, return_type=%s, function=%s)' % (
+            self.__class__.__name__, self.name, dict_to_string(self.parameters), nullable_to_string(self.return_type),
+            self.function)
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.name == other.name \
+               and dict_equals(self.parameters, other.parameters) \
+               and nullable_equals(self.return_type, other.return_type) \
+               and self.function == other.function
+
+    def evaluate(self):
+        ...
+
+
 class ArrayType(Declaration):
     def __init__(self, element_type):
         self.type_name = element_type
