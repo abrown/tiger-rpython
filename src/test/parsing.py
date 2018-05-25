@@ -169,30 +169,30 @@ class TestParsing(unittest.TestCase):
 
         expected = Let(
             [TypeDeclaration('any', RecordType({'any': TypeId('int')})),
-             VariableDeclaration('buffer', None, FunctionCall('getchar', args=[])),
+             VariableDeclaration('buffer', None, FunctionCall('getchar', arguments=[])),
              FunctionDeclaration('readint', [FunctionParameter('any', TypeId('any'))], TypeId('int'), Let(
                  declarations=[VariableDeclaration('i', None, IntegerValue(0)),
                                FunctionDeclaration('isdigit', [FunctionParameter('s', TypeId('string'))], TypeId('int'), And(
-                                   GreaterThanOrEquals(FunctionCall('ord', args=[LValue('buffer', None)]),
-                                                       FunctionCall('ord', args=[StringValue('0')])),
-                                   LessThanOrEquals(FunctionCall('ord', args=[LValue('buffer', None)]),
-                                                    FunctionCall('ord', args=[StringValue('9')])))),
+                                   GreaterThanOrEquals(FunctionCall('ord', arguments=[LValue('buffer', None)]),
+                                                       FunctionCall('ord', arguments=[StringValue('0')])),
+                                   LessThanOrEquals(FunctionCall('ord', arguments=[LValue('buffer', None)]),
+                                                    FunctionCall('ord', arguments=[StringValue('9')])))),
                                FunctionDeclaration('skipto', [], None, While(
                                    Or(Equals(LValue('buffer', None), StringValue(" ")),
                                       Equals(LValue('buffer', None), StringValue("\n"))),
-                                   Assign(LValue('buffer', None), FunctionCall('getchar', args=[]))))],
-                 expressions=[FunctionCall('skipto', args=[]), Assign(LValue('any', RecordLValue('any', None)),
-                                                                      FunctionCall('isdigit',
-                                                                                   args=[LValue('buffer', None)])),
-                              While(FunctionCall('isdigit', args=[LValue('buffer', None)]), Sequence(expressions=[
+                                   Assign(LValue('buffer', None), FunctionCall('getchar', arguments=[]))))],
+                 expressions=[FunctionCall('skipto', arguments=[]), Assign(LValue('any', RecordLValue('any', None)),
+                                                                           FunctionCall('isdigit',
+                                                                                        arguments=[LValue('buffer', None)])),
+                              While(FunctionCall('isdigit', arguments=[LValue('buffer', None)]), Sequence(expressions=[
                                   Assign(LValue('i', None), Add(Multiply(LValue('i', None), IntegerValue(10)), Subtract(
-                                      FunctionCall('ord', args=[LValue('buffer', None)]),
-                                      FunctionCall('ord', args=[StringValue('0')])))),
-                                  Assign(LValue('buffer', None), FunctionCall('getchar', args=[]))])),
+                                      FunctionCall('ord', arguments=[LValue('buffer', None)]),
+                                      FunctionCall('ord', arguments=[StringValue('0')])))),
+                                  Assign(LValue('buffer', None), FunctionCall('getchar', arguments=[]))])),
                               LValue('i', None)])),
              TypeDeclaration('list', RecordType({'first': TypeId('int'), 'rest': TypeId('list')}))], expressions=[
                 FunctionCall('printlist',
-                             args=[FunctionCall('merge', args=[LValue('list1', None), LValue('list2', None)])])])
+                             arguments=[FunctionCall('merge', arguments=[LValue('list1', None), LValue('list2', None)])])])
 
         self.assertParsesTo(merge_snippet, expected)
 

@@ -218,41 +218,54 @@ class ArrayLValue(LValue):
 
 
 class FunctionCall(Exp):
-    def __init__(self, name, args):
+    def __init__(self, name, arguments):
         self.name = name
-        assert (isinstance(args, list))
-        self.args = args
+        assert (isinstance(arguments, list))
+        self.arguments = arguments
 
     def to_string(self):
-        return '%s(name=%s, args=%s)' % (self.__class__.__name__, self.name, list_to_string(self.args))
+        return '%s(name=%s, args=%s)' % (self.__class__.__name__, self.name, list_to_string(self.arguments))
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
-               and list_equals(self.args, other.args)
+               and list_equals(self.arguments, other.args)
 
-    def evaluate(self, env):
+    def evaluate(self, env=None):
         # find declaration
         declaration = env.get(self.name)
         if not declaration:
             raise InterpretationError('Could not find function %s' % self.name)
 
         # evaluate arguments
-        if len(self.args) != len(declaration.parameters):
+        if len(self.arguments) != len(declaration.parameters):
             raise InterpretationError('Incorrect number of arguments passed (%d); expected %d for function %s' % (
-                len(self.args), len(declaration.parameters), self.name))
-        for i in range(len(self.args)):
-            name = declaration.parameters[i].name
-            value = self.args[i].evaluate(env)
-            # TODO type-check
-            env.set(name, value)
+                len(self.arguments), len(declaration.parameters), self.name))
 
         # evaluate body
         if isinstance(declaration, FunctionDeclaration):
+            for i in range(len(self.arguments)):
+                name = declaration.parameters[i].name
+                value = self.arguments[i].evaluate(env)
+                # TODO type-check
+                env.set(name, value)
             return_value = declaration.body.evaluate(env)
             # TODO type-check
             return return_value
         elif isinstance(declaration, NativeFunctionDeclaration):
-            pass
+            # only one argument is allowed due to calling RPythonized functions with var-args
+            if len(self.arguments) > 1:
+                raise InterpretationError('Only one argument allowed in native functions: %s' % self.name)
+            elif len(self.arguments) == 1:
+                value = self.arguments[0].evaluate(env)
+                result = declaration.function(value)
+                assert isinstance(result, Value)
+                # TODO type-check result
+                return result
+            else:
+                result = declaration.function()
+                assert isinstance(result, Value)
+                # TODO type-check result
+                return result
         else:
             raise InterpretationError('Unknown function type: %s' % declaration.__class__.__name__)
 

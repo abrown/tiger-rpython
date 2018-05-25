@@ -18,6 +18,18 @@ class TestEvaluating(unittest.TestCase):
 
         self.assertEqual(IntegerValue(2), result)
 
+    def test_native_function_call(self):
+        decl = NativeFunctionDeclaration('square',
+                                   [FunctionParameter('a', TypeId('int'))],
+                                   TypeId('int'),
+                                   lambda a: IntegerValue(a.integer * a.integer))
+        call = FunctionCall('square', [IntegerValue(7)])
+        env = Environment()
+        env.set(decl.name, decl)
+
+        result = call.evaluate(env)
+
+        self.assertEqual(IntegerValue(49), result)
 
 if __name__ == '__main__':
     unittest.main()
