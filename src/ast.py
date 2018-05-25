@@ -228,7 +228,7 @@ class FunctionCall(Exp):
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
-               and list_equals(self.arguments, other.args)
+               and list_equals(self.arguments, other.arguments)
 
     def evaluate(self, env=None):
         # find declaration
@@ -258,12 +258,12 @@ class FunctionCall(Exp):
             elif len(self.arguments) == 1:
                 value = self.arguments[0].evaluate(env)
                 result = declaration.function(value)
-                assert isinstance(result, Value)
+                assert isinstance(result, Value) if result is not None else True
                 # TODO type-check result
                 return result
             else:
                 result = declaration.function()
-                assert isinstance(result, Value)
+                assert isinstance(result, Value) if result is not None else True
                 # TODO type-check result
                 return result
         else:
@@ -477,6 +477,12 @@ class Sequence(Exp):
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and list_equals(self.expressions, other.expressions)
+
+    def evaluate(self, env=None):
+        value = None
+        for expression in self.expressions:
+            value = expression.evaluate(env)
+        return value
 
 
 class BinaryOperation(Exp):

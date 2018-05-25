@@ -1,8 +1,9 @@
 import os
 import unittest
 
-from src.parser import Parser
+from src.ast import NativeFunctionDeclaration, FunctionParameter, TypeId, IntegerValue, StringValue
 from src.environment import Environment
+from src.parser import Parser
 
 
 class TestInterpreting(unittest.TestCase):
@@ -52,22 +53,31 @@ for f in list_test_files('expr-tests'):
     setattr(TestInterpreting, name, test)
 
 
+class output:
+    """Container for holding output"""
+    value = ""
+
+
 def generate_print_test(path):
     def test(self):
         program = parse_file(path)
-        stdout = ""
+        stdout = output()
 
         def tiger_print(s):
-            stdout += s
+            if isinstance(s, IntegerValue):
+                stdout.value += str(s.integer)
+            elif isinstance(s, StringValue):
+                stdout.value += s.string
+            else:
+                raise ValueError('Unknown value type ' + type(s))
 
         env = Environment()
-        env.set('print', NativeFunctionDeclaration(tiger_print))
+        env.set('print', NativeFunctionDeclaration('print', [FunctionParameter('s', TypeId('str'))], None, tiger_print))
 
         program.evaluate(env)
 
         expected = read_file(path.replace('.tig', '.out.bak'))
-
-        self.assertEqual(expected, stdout)
+        self.assertEqual(expected, stdout.value)
 
     return test
 
