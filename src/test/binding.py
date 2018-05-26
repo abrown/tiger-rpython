@@ -22,6 +22,17 @@ class TestBinding(unittest.TestCase):
         self.assertEqual(None, self.sut.get('b'))
         self.assertEqual("...", self.sut.get('c'))
 
+    def test_hiding(self):
+        self.sut.set('a', 1)
+        self.sut.push()
+
+        self.assertEqual(1, self.sut.get('a'))
+        self.sut.set('a', 2)
+        self.assertEqual(2, self.sut.get('a'))
+
+        self.sut.pop()
+        self.assertEqual(1, self.sut.get('a'))
+
 
 if __name__ == '__main__':
     unittest.main()

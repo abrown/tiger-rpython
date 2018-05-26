@@ -32,3 +32,6 @@ class Environment:
         old = self.bindings[name] if name in self.bindings else None
         self.bindings[name] = None
         return old
+
+    def size(self):
+        return len(self.bindings)

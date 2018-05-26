@@ -245,38 +245,42 @@ class FunctionCall(Exp):
         if not declaration:
             raise InterpretationError('Could not find function %s' % self.name)
 
-        # evaluate arguments
+        # check arguments
         if len(self.arguments) != len(declaration.parameters):
             raise InterpretationError('Incorrect number of arguments passed (%d); expected %d for function %s' % (
                 len(self.arguments), len(declaration.parameters), self.name))
 
-        # evaluate body
-        if isinstance(declaration, FunctionDeclaration):
-            for i in range(len(self.arguments)):
-                name = declaration.parameters[i].name
-                value = self.arguments[i].evaluate(env)
-                # TODO type-check
-                env.set(name, value)
-            return_value = declaration.body.evaluate(env)
+        # evaluate arguments
+        env.push()
+        value = None
+        for i in range(len(self.arguments)):
+            name = declaration.parameters[i].name
+            value = self.arguments[i].evaluate(env)
             # TODO type-check
-            return return_value
+            env.set(name, value)
+
+        # evaluate body
+        result = None
+        if isinstance(declaration, FunctionDeclaration):
+            result = declaration.body.evaluate(env)
+            # TODO type-check
         elif isinstance(declaration, NativeFunctionDeclaration):
             # only one argument is allowed due to calling RPythonized functions with var-args
             if len(self.arguments) > 1:
                 raise InterpretationError('Only one argument allowed in native functions: %s' % self.name)
             elif len(self.arguments) == 1:
-                value = self.arguments[0].evaluate(env)
                 result = declaration.function(value)
                 assert isinstance(result, Value) if result is not None else True
                 # TODO type-check result
-                return result
             else:
                 result = declaration.function()
                 assert isinstance(result, Value) if result is not None else True
                 # TODO type-check result
-                return result
         else:
             raise InterpretationError('Unknown function type: %s' % declaration.__class__.__name__)
+
+        env.pop()
+        return result
 
 
 class MethodCall(Exp):
