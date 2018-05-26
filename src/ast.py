@@ -1,3 +1,4 @@
+from src.environment import Environment
 from src.rpythonized_object import RPythonizedObject
 
 
@@ -79,6 +80,9 @@ class Exp(Program):
 class Declaration(Program):
     def __init__(self, name):
         self.name = name
+
+    def evaluate(self, env=None):
+        env.set(self.name, self)
 
 
 class Type(Program):
@@ -369,15 +373,20 @@ class Let(Exp):
                and list_equals(self.expressions, other.expressions)
 
     def evaluate(self, env=None):
-        if env is None:
+        if not isinstance(env, Environment):
             raise InterpretationError('No environment in %s' % self.to_string())
+
+        env.push()
+
         for declaration in self.declarations:
             assert isinstance(declaration, Declaration)
-            env.set(declaration.name, declaration)
+            declaration.evaluate(env)
         value = None
         for expression in self.expressions:
             value = expression.evaluate(env)
-        # TODO reset environment
+
+        env.pop()
+
         return value
 
 
@@ -395,7 +404,7 @@ class TypeDeclaration(Declaration):
 
 class VariableDeclaration(Declaration):
     def __init__(self, name, type, exp):
-        self.name = name
+        Declaration.__init__(self, name)
         self.type = type
         self.exp = exp
 
@@ -406,6 +415,11 @@ class VariableDeclaration(Declaration):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and nullable_equals(self.type, other.type) and self.exp.equals(other.exp)
+
+    def evaluate(self, env=None):
+        value = self.exp.evaluate(env)
+        # TODO type-check
+        env.set(self.name, value)
 
 
 class FunctionParameter(Declaration):
