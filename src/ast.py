@@ -368,9 +368,11 @@ class For(Exp):
 
         for i in range(iterator.integer, end_value.integer):
             iterator.integer = i
-            env.set(self.var, iterator)
+            env.set_current_level(self.var, iterator)
             result = self.body.evaluate(env)
             assert result is None
+
+        env.pop()
 
 
 class Break(Exp):
