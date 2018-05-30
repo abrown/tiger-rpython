@@ -1,6 +1,8 @@
 import os
 import unittest
 
+from src.ast import NativeFunctionDeclaration, FunctionParameter, TypeId, IntegerValue, StringValue
+from src.environment import Environment
 from src.parser import Parser
 
 
@@ -32,7 +34,7 @@ def parse_file(path):
     return parser.parse()
 
 
-def generate_test(path):
+def generate_expression_test(path):
     def test(self):
         program = parse_file(path)
         result = program.evaluate()
@@ -47,7 +49,43 @@ def generate_test(path):
 # dynamically add each test in 'expr-tests' as a method of TestInterpreting
 for f in list_test_files('expr-tests'):
     name = 'test_' + get_file_name(f)
-    test = generate_test(f)
+    test = generate_expression_test(f)
+    setattr(TestInterpreting, name, test)
+
+
+class output:
+    """Container for holding output"""
+    value = ""
+
+
+def generate_print_test(path):
+    def test(self):
+        program = parse_file(path)
+        stdout = output()
+
+        def tiger_print(s):
+            if isinstance(s, IntegerValue):
+                stdout.value += str(s.integer)
+            elif isinstance(s, StringValue):
+                stdout.value += s.string
+            else:
+                raise ValueError('Unknown value type ' + type(s))
+
+        env = Environment()
+        env.set('print', NativeFunctionDeclaration('print', [FunctionParameter('s', TypeId('str'))], None, tiger_print))
+
+        program.evaluate(env)
+
+        expected = read_file(path.replace('.tig', '.out.bak'))
+        self.assertEqual(expected, stdout.value)
+
+    return test
+
+
+# dynamically add each test in 'expr-tests' as a method of TestInterpreting
+for f in list_test_files('print-tests'):
+    name = 'test_' + get_file_name(f)
+    test = generate_print_test(f)
     setattr(TestInterpreting, name, test)
 
 if __name__ == '__main__':

@@ -1,8 +1,20 @@
+from src.environment import Environment
 from src.rpythonized_object import RPythonizedObject
 
 
+class InterpretationError(Exception):
+    def __init__(self, reason):
+        self.reason = reason
+
+    def to_string(self):
+        return self.reason
+
+    def __str__(self):
+        return self.to_string()
+
+
 class Program(RPythonizedObject):
-    def evaluate(self):
+    def evaluate(self, env=None):
         pass
         # TODO implement in sub-classes
 
@@ -66,6 +78,14 @@ class Exp(Program):
 
 
 class Declaration(Program):
+    def __init__(self, name):
+        self.name = name
+
+    def evaluate(self, env=None):
+        env.set_current_level(self.name, self)
+
+
+class Type(Program):
     pass
 
 
@@ -79,7 +99,7 @@ class Value(Exp):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.value() == other.value()
 
-    def evaluate(self):
+    def evaluate(self, env=None):
         return self
 
 
@@ -159,7 +179,7 @@ class ObjectCreation(Exp):
 
 class TypeId(Declaration):
     def __init__(self, name):
-        self.name = name
+        Declaration.__init__(self, name)
 
     def to_string(self):
         return '%s(name=%s)' % (self.__class__.__name__, self.name)
@@ -181,6 +201,12 @@ class LValue(Exp):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and nullable_equals(self.next, other.next)
 
+    def evaluate(self, env=None):
+        if not env:
+            raise InterpretationError('No environment available at %s' % self.to_string())
+        return env.get(self.name)
+        # TODO handle self.next
+
 
 class RecordLValue(LValue):
     pass
@@ -201,16 +227,60 @@ class ArrayLValue(LValue):
 
 
 class FunctionCall(Exp):
-    def __init__(self, name, args):
+    def __init__(self, name, arguments):
         self.name = name
-        self.args = args
+        assert (isinstance(arguments, list))
+        self.arguments = arguments
 
     def to_string(self):
-        return '%s(name=%s, args=%s)' % (self.__class__.__name__, self.name, list_to_string(self.args))
+        return '%s(name=%s, args=%s)' % (self.__class__.__name__, self.name, list_to_string(self.arguments))
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
-               and list_equals(self.args, other.args)
+               and list_equals(self.arguments, other.arguments)
+
+    def evaluate(self, env=None):
+        # find declaration
+        declaration = env.get(self.name)
+        if not declaration:
+            raise InterpretationError('Could not find function %s' % self.name)
+
+        # check arguments
+        if len(self.arguments) != len(declaration.parameters):
+            raise InterpretationError('Incorrect number of arguments passed (%d); expected %d for function %s' % (
+                len(self.arguments), len(declaration.parameters), self.name))
+
+        # evaluate arguments
+        env.push()
+        value = None
+        for i in range(len(self.arguments)):
+            name = declaration.parameters[i].name
+            value = self.arguments[i].evaluate(env)
+            # TODO type-check
+            env.set(name, value)
+
+        # evaluate body
+        result = None
+        if isinstance(declaration, FunctionDeclaration):
+            result = declaration.body.evaluate(env)
+            # TODO type-check
+        elif isinstance(declaration, NativeFunctionDeclaration):
+            # only one argument is allowed due to calling RPythonized functions with var-args
+            if len(self.arguments) > 1:
+                raise InterpretationError('Only one argument allowed in native functions: %s' % self.name)
+            elif len(self.arguments) == 1:
+                result = declaration.function(value)
+                assert isinstance(result, Value) if result is not None else True
+                # TODO type-check result
+            else:
+                result = declaration.function()
+                assert isinstance(result, Value) if result is not None else True
+                # TODO type-check result
+        else:
+            raise InterpretationError('Unknown function type: %s' % declaration.__class__.__name__)
+
+        env.pop()
+        return result
 
 
 class MethodCall(Exp):
@@ -230,15 +300,20 @@ class MethodCall(Exp):
 
 
 class Assign(Exp):
-    def __init__(self, lvalue, exp):
+    def __init__(self, lvalue, expression):
         self.lvalue = lvalue
-        self.exp = exp
+        self.expression = expression
 
     def to_string(self):
-        return '%s(lvalue=%s, exp=%s)' % (self.__class__.__name__, self.lvalue.to_string(), self.exp.to_string())
+        return '%s(lvalue=%s, exp=%s)' % (self.__class__.__name__, self.lvalue.to_string(), self.expression.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.exp.equals(other.exp)
+        return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.expression.equals(other.expression)
+
+    def evaluate(self, env=None):
+        # TODO handle other types of lvalues
+        value = self.expression.evaluate(env)
+        env.set(self.lvalue.name, value)
 
 
 class If(Exp):
@@ -257,6 +332,15 @@ class If(Exp):
                and self.body_if_true.equals(other.body_if_true) \
                and nullable_equals(self.body_if_false, other.body_if_false)
 
+    def evaluate(self, env=None):
+        condition_value = self.condition.evaluate(env)
+        assert isinstance(condition_value, IntegerValue)
+        if condition_value != 0:
+            result = self.body_if_true.evaluate(env)
+        else:
+            result = self.body_if_false.evaluate(env)
+        return result
+
 
 class While(Exp):
     def __init__(self, condition, body):
@@ -270,6 +354,16 @@ class While(Exp):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.condition.equals(other.condition) and self.body.equals(
             other.body)
+
+    def evaluate(self, env=None):
+        condition_value = self.condition.evaluate(env)
+        assert isinstance(condition_value, IntegerValue)
+        result = None
+        while condition_value.integer != 0:
+            result = self.body.evaluate(env)
+            # TODO break
+            condition_value = self.condition.evaluate(env)
+        return result
 
 
 class For(Exp):
@@ -286,6 +380,24 @@ class For(Exp):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.var == other.var and self.start.equals(
             other.start) and self.end.equals(other.end) and self.body.equals(other.body)
+
+    def evaluate(self, env=None):
+        # TODO remove env is None checks
+        env.push()
+        start_value = self.start.evaluate(env)
+        assert isinstance(start_value, IntegerValue)
+        end_value = self.end.evaluate(env)
+        assert isinstance(end_value, IntegerValue)
+        iterator = start_value
+
+        for i in range(iterator.integer, end_value.integer + 1):
+            iterator.integer = i
+            env.set_current_level(self.var, iterator)
+            result = self.body.evaluate(env)
+            # TODO break
+            assert result is None
+
+        env.pop()
 
 
 class Break(Exp):
@@ -306,10 +418,27 @@ class Let(Exp):
                and list_equals(self.declarations, other.declarations) \
                and list_equals(self.expressions, other.expressions)
 
+    def evaluate(self, env=None):
+        if not isinstance(env, Environment):
+            raise InterpretationError('No environment in %s' % self.to_string())
+
+        env.push()
+
+        for declaration in self.declarations:
+            assert isinstance(declaration, Declaration)
+            declaration.evaluate(env)
+        value = None
+        for expression in self.expressions:
+            value = expression.evaluate(env)
+
+        env.pop()
+
+        return value
+
 
 class TypeDeclaration(Declaration):
     def __init__(self, name, type):
-        self.name = name
+        Declaration.__init__(self, name)
         self.type = type
 
     def to_string(self):
@@ -321,7 +450,7 @@ class TypeDeclaration(Declaration):
 
 class VariableDeclaration(Declaration):
     def __init__(self, name, type, exp):
-        self.name = name
+        Declaration.__init__(self, name)
         self.type = type
         self.exp = exp
 
@@ -333,27 +462,70 @@ class VariableDeclaration(Declaration):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and nullable_equals(self.type, other.type) and self.exp.equals(other.exp)
 
+    def evaluate(self, env=None):
+        value = self.exp.evaluate(env)
+        # TODO type-check
+        env.set_current_level(self.name, value)
+
+
+class FunctionParameter(Declaration):
+    def __init__(self, name, type=None):
+        self.name = name
+        assert isinstance(type, TypeId) or type is None
+        self.type = type
+
+    def to_string(self):
+        return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, nullable_to_string(self.type))
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.name == other.name \
+               and nullable_equals(self.type, other.type)
+
 
 class FunctionDeclaration(Declaration):
     def __init__(self, name, parameters, return_type, body):
-        self.name = name
+        Declaration.__init__(self, name)
+        assert isinstance(parameters, list)
         self.parameters = parameters
+        assert isinstance(return_type, TypeId) or return_type is None
         self.return_type = return_type
+        assert isinstance(body, Exp)
         self.body = body
 
     def to_string(self):
         return '%s(name=%s, parameters=%s, return_type=%s, body=%s)' % (
-            self.__class__.__name__, self.name, dict_to_string(self.parameters), nullable_to_string(self.return_type),
+            self.__class__.__name__, self.name, list_to_string(self.parameters), nullable_to_string(self.return_type),
             self.body.to_string())
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.name == other.name \
+               and list_equals(self.parameters, other.parameters) \
+               and nullable_equals(self.return_type, other.return_type) \
+               and self.body.equals(other.body)
+
+
+class NativeFunctionDeclaration(Declaration):
+    def __init__(self, name, parameters=[], return_type=None, function=None):
+        Declaration.__init__(self, name)
+        assert isinstance(parameters, list)
+        self.parameters = parameters
+        assert isinstance(return_type, TypeId) or return_type is None
+        self.return_type = return_type
+        self.function = function
+
+    def to_string(self):
+        return '%s(name=%s, parameters=%s, return_type=%s, function=%s)' % (
+            self.__class__.__name__, self.name, dict_to_string(self.parameters), nullable_to_string(self.return_type),
+            self.function)
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and dict_equals(self.parameters, other.parameters) \
                and nullable_equals(self.return_type, other.return_type) \
-               and self.body.equals(other.body)
+               and self.function == other.function
 
 
-class ArrayType(Declaration):
+class ArrayType(Type):
     def __init__(self, element_type):
         self.type_name = element_type
 
@@ -364,7 +536,7 @@ class ArrayType(Declaration):
         return RPythonizedObject.equals(self, other) and self.type_name == other.type_name
 
 
-class RecordType(Declaration):
+class RecordType(Type):
     def __init__(self, type_fields):
         self.type_fields = type_fields
 
@@ -385,6 +557,12 @@ class Sequence(Exp):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and list_equals(self.expressions, other.expressions)
 
+    def evaluate(self, env=None):
+        value = None
+        for expression in self.expressions:
+            value = expression.evaluate(env)
+        return value
+
 
 class BinaryOperation(Exp):
     def __init__(self, left, right):
@@ -398,89 +576,89 @@ class BinaryOperation(Exp):
         return '%s(left=%s, right=%s)' % (self.__class__.__name__, self.left.to_string(), self.right.to_string())
 
     # TODO inline
-    def evaluate_sides_to_value(self):
-        left_value = self.left.evaluate()
+    def evaluate_sides_to_value(self, env):
+        left_value = self.left.evaluate(env)
         assert isinstance(left_value, Value)
-        right_value = self.right.evaluate()
+        right_value = self.right.evaluate(env)
         assert isinstance(right_value, Value)
         return left_value, right_value
 
     # TODO inline
-    def evaluate_sides_to_int(self):
-        left_value = self.left.evaluate()
+    def evaluate_sides_to_int(self, env):
+        left_value = self.left.evaluate(env)
         assert isinstance(left_value, IntegerValue)
-        right_value = self.right.evaluate()
+        right_value = self.right.evaluate(env)
         assert isinstance(right_value, IntegerValue)
         return left_value.integer, right_value.integer
 
 
 class Multiply(BinaryOperation):
-    def evaluate(self):
-        (left_int, right_int) = self.evaluate_sides_to_int()
+    def evaluate(self, env=None):
+        (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int * right_int)
 
 
 class Divide(BinaryOperation):
-    def evaluate(self):
-        (left_int, right_int) = self.evaluate_sides_to_int()
+    def evaluate(self, env=None):
+        (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int // right_int)
 
 
 class Add(BinaryOperation):
-    def evaluate(self):
-        (left_int, right_int) = self.evaluate_sides_to_int()
+    def evaluate(self, env=None):
+        (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int + right_int)
 
 
 class Subtract(BinaryOperation):
-    def evaluate(self):
-        (left_int, right_int) = self.evaluate_sides_to_int()
+    def evaluate(self, env=None):
+        (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int - right_int)
 
 
 class GreaterThanOrEquals(BinaryOperation):
-    def evaluate(self):
-        (left_int, right_int) = self.evaluate_sides_to_int()
+    def evaluate(self, env=None):
+        (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int >= right_int else IntegerValue(0)
 
 
 class LessThanOrEquals(BinaryOperation):
-    def evaluate(self):
-        (left_int, right_int) = self.evaluate_sides_to_int()
+    def evaluate(self, env=None):
+        (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int <= right_int else IntegerValue(0)
 
 
 class Equals(BinaryOperation):
-    def evaluate(self):
-        (left, right) = self.evaluate_sides_to_value()
+    def evaluate(self, env=None):
+        (left, right) = self.evaluate_sides_to_value(env)
         return IntegerValue(1) if left.equals(right) else IntegerValue(0)
 
 
 class NotEquals(BinaryOperation):
-    def evaluate(self):
-        (left, right) = self.evaluate_sides_to_value()
+    def evaluate(self, env=None):
+        (left, right) = self.evaluate_sides_to_value(env)
         return IntegerValue(1) if not left.equals(right) else IntegerValue(0)
 
 
 class GreaterThan(BinaryOperation):
-    def evaluate(self):
-        (left_int, right_int) = self.evaluate_sides_to_int()
+    def evaluate(self, env=None):
+        (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int > right_int else IntegerValue(0)
 
 
 class LessThan(BinaryOperation):
-    def evaluate(self):
-        (left_int, right_int) = self.evaluate_sides_to_int()
+    def evaluate(self, env=None):
+        (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int < right_int else IntegerValue(0)
 
 
 class And(BinaryOperation):
-    def evaluate(self):
-        (left_int, right_int) = self.evaluate_sides_to_int()
+    def evaluate(self, env=None):
+        (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int and right_int else IntegerValue(0)
 
 
 class Or(BinaryOperation):
-    def evaluate(self):
-        (left_int, right_int) = self.evaluate_sides_to_int()
+    def evaluate(self, env=None):
+        (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int or right_int else IntegerValue(0)

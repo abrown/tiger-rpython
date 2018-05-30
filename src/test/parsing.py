@@ -87,11 +87,12 @@ class TestParsing(unittest.TestCase):
         self.assertParsesTo('var a:int := 42', VariableDeclaration('a', TypeId('int'), IntegerValue(42)))
 
     def test_empty_function_declaration(self):
-        self.assertParsesTo('function x() = noop', FunctionDeclaration('x', {}, None, LValue('noop')))
+        self.assertParsesTo('function x() = noop', FunctionDeclaration('x', [], None, LValue('noop')))
 
     def test_function_declaration(self):
         self.assertParsesTo('function x(y:int, z:int):int = add(y, z)',
-                            FunctionDeclaration('x', {'y': TypeId('int'), 'z': TypeId('int')}, TypeId('int'),
+                            FunctionDeclaration('x', [FunctionParameter('y', TypeId('int')),
+                                                      FunctionParameter('z', TypeId('int'))], TypeId('int'),
                                                 FunctionCall('add', [LValue('y'), LValue('z')])))
 
     def test_type_declaration(self):
@@ -168,30 +169,30 @@ class TestParsing(unittest.TestCase):
 
         expected = Let(
             [TypeDeclaration('any', RecordType({'any': TypeId('int')})),
-             VariableDeclaration('buffer', None, FunctionCall('getchar', args=[])),
-             FunctionDeclaration('readint', {'any': TypeId('any')}, TypeId('int'), Let(
+             VariableDeclaration('buffer', None, FunctionCall('getchar', arguments=[])),
+             FunctionDeclaration('readint', [FunctionParameter('any', TypeId('any'))], TypeId('int'), Let(
                  declarations=[VariableDeclaration('i', None, IntegerValue(0)),
-                               FunctionDeclaration('isdigit', {'s': TypeId('string')}, TypeId('int'), And(
-                                   GreaterThanOrEquals(FunctionCall('ord', args=[LValue('buffer', None)]),
-                                                       FunctionCall('ord', args=[StringValue('0')])),
-                                   LessThanOrEquals(FunctionCall('ord', args=[LValue('buffer', None)]),
-                                                    FunctionCall('ord', args=[StringValue('9')])))),
-                               FunctionDeclaration('skipto', {}, None, While(
+                               FunctionDeclaration('isdigit', [FunctionParameter('s', TypeId('string'))], TypeId('int'), And(
+                                   GreaterThanOrEquals(FunctionCall('ord', arguments=[LValue('buffer', None)]),
+                                                       FunctionCall('ord', arguments=[StringValue('0')])),
+                                   LessThanOrEquals(FunctionCall('ord', arguments=[LValue('buffer', None)]),
+                                                    FunctionCall('ord', arguments=[StringValue('9')])))),
+                               FunctionDeclaration('skipto', [], None, While(
                                    Or(Equals(LValue('buffer', None), StringValue(" ")),
                                       Equals(LValue('buffer', None), StringValue("\n"))),
-                                   Assign(LValue('buffer', None), FunctionCall('getchar', args=[]))))],
-                 expressions=[FunctionCall('skipto', args=[]), Assign(LValue('any', RecordLValue('any', None)),
-                                                                      FunctionCall('isdigit',
-                                                                                   args=[LValue('buffer', None)])),
-                              While(FunctionCall('isdigit', args=[LValue('buffer', None)]), Sequence(expressions=[
+                                   Assign(LValue('buffer', None), FunctionCall('getchar', arguments=[]))))],
+                 expressions=[FunctionCall('skipto', arguments=[]), Assign(LValue('any', RecordLValue('any', None)),
+                                                                           FunctionCall('isdigit',
+                                                                                        arguments=[LValue('buffer', None)])),
+                              While(FunctionCall('isdigit', arguments=[LValue('buffer', None)]), Sequence(expressions=[
                                   Assign(LValue('i', None), Add(Multiply(LValue('i', None), IntegerValue(10)), Subtract(
-                                      FunctionCall('ord', args=[LValue('buffer', None)]),
-                                      FunctionCall('ord', args=[StringValue('0')])))),
-                                  Assign(LValue('buffer', None), FunctionCall('getchar', args=[]))])),
+                                      FunctionCall('ord', arguments=[LValue('buffer', None)]),
+                                      FunctionCall('ord', arguments=[StringValue('0')])))),
+                                  Assign(LValue('buffer', None), FunctionCall('getchar', arguments=[]))])),
                               LValue('i', None)])),
              TypeDeclaration('list', RecordType({'first': TypeId('int'), 'rest': TypeId('list')}))], expressions=[
                 FunctionCall('printlist',
-                             args=[FunctionCall('merge', args=[LValue('list1', None), LValue('list2', None)])])])
+                             arguments=[FunctionCall('merge', arguments=[LValue('list1', None), LValue('list2', None)])])])
 
         self.assertParsesTo(merge_snippet, expected)
 
