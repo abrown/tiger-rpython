@@ -82,7 +82,7 @@ class Declaration(Program):
         self.name = name
 
     def evaluate(self, env=None):
-        env.set(self.name, self)
+        env.set_current_level(self.name, self)
 
 
 class Type(Program):
@@ -300,15 +300,20 @@ class MethodCall(Exp):
 
 
 class Assign(Exp):
-    def __init__(self, lvalue, exp):
+    def __init__(self, lvalue, expression):
         self.lvalue = lvalue
-        self.exp = exp
+        self.expression = expression
 
     def to_string(self):
-        return '%s(lvalue=%s, exp=%s)' % (self.__class__.__name__, self.lvalue.to_string(), self.exp.to_string())
+        return '%s(lvalue=%s, exp=%s)' % (self.__class__.__name__, self.lvalue.to_string(), self.expression.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.exp.equals(other.exp)
+        return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.expression.equals(other.expression)
+
+    def evaluate(self, env=None):
+        # TODO handle other types of lvalues
+        value = self.expression.evaluate(env)
+        env.set(self.lvalue.name, value)
 
 
 class If(Exp):
@@ -327,6 +332,15 @@ class If(Exp):
                and self.body_if_true.equals(other.body_if_true) \
                and nullable_equals(self.body_if_false, other.body_if_false)
 
+    def evaluate(self, env=None):
+        condition_value = self.condition.evaluate(env)
+        assert isinstance(condition_value, IntegerValue)
+        if condition_value != 0:
+            result = self.body_if_true.evaluate(env)
+        else:
+            result = self.body_if_false.evaluate(env)
+        return result
+
 
 class While(Exp):
     def __init__(self, condition, body):
@@ -340,6 +354,16 @@ class While(Exp):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.condition.equals(other.condition) and self.body.equals(
             other.body)
+
+    def evaluate(self, env=None):
+        condition_value = self.condition.evaluate(env)
+        assert isinstance(condition_value, IntegerValue)
+        result = None
+        while condition_value.integer != 0:
+            result = self.body.evaluate(env)
+            # TODO break
+            condition_value = self.condition.evaluate(env)
+        return result
 
 
 class For(Exp):
@@ -366,10 +390,11 @@ class For(Exp):
         assert isinstance(end_value, IntegerValue)
         iterator = start_value
 
-        for i in range(iterator.integer, end_value.integer):
+        for i in range(iterator.integer, end_value.integer + 1):
             iterator.integer = i
             env.set_current_level(self.var, iterator)
             result = self.body.evaluate(env)
+            # TODO break
             assert result is None
 
         env.pop()
@@ -440,7 +465,7 @@ class VariableDeclaration(Declaration):
     def evaluate(self, env=None):
         value = self.exp.evaluate(env)
         # TODO type-check
-        env.set(self.name, value)
+        env.set_current_level(self.name, value)
 
 
 class FunctionParameter(Declaration):
