@@ -27,7 +27,7 @@ class TestBinding(unittest.TestCase):
         self.sut.push()
 
         self.assertEqual(1, self.sut.get('a'))
-        self.sut.set('a', 2)
+        self.sut.set_current_level('a', 2)
         self.assertEqual(2, self.sut.get('a'))
 
         self.sut.pop()
