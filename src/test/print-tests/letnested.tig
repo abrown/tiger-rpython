@@ -1,0 +1,10 @@
+let
+  var a : int := 1
+in
+  (let
+    var a : int := 2
+  in
+    print(a)
+  end;
+  print(a))
+end
