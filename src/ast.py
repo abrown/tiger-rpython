@@ -357,6 +357,21 @@ class For(Exp):
         return RPythonizedObject.equals(self, other) and self.var == other.var and self.start.equals(
             other.start) and self.end.equals(other.end) and self.body.equals(other.body)
 
+    def evaluate(self, env=None):
+        # TODO remove env is None checks
+        env.push()
+        start_value = self.start.evaluate(env)
+        assert isinstance(start_value, IntegerValue)
+        end_value = self.end.evaluate(env)
+        assert isinstance(end_value, IntegerValue)
+        iterator = start_value
+
+        for i in range(iterator.integer, end_value.integer):
+            iterator.integer = i
+            env.set(self.var, iterator)
+            result = self.body.evaluate(env)
+            assert result is None
+
 
 class Break(Exp):
     pass
@@ -496,7 +511,6 @@ class ArrayType(Type):
 
 class RecordType(Type):
     def __init__(self, type_fields):
-        assert isinstance(type_fields, dict)
         self.type_fields = type_fields
 
     def to_string(self):
