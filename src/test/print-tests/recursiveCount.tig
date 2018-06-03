@@ -1,0 +1,10 @@
+let
+  function a(n:int) : int =
+    if (n < 9) then
+      (print(n);
+       a(n+1))
+    else
+      n
+in
+  print(a(1))
+end
