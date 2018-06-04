@@ -18,14 +18,13 @@ integration-test-evaluating: bin/tiger-interpreter
 
 binaries: bin/tiger-parser bin/tiger-interpreter
 
-bin/tiger-parser: src/main/tiger-parser.py src/main/util.py $(shell find src/*.py) bin
+bin/tiger-parser: src/main/tiger-parser.py src/main/util.py $(shell find src/*.py)
+	mkdir -p bin
 	PYTHONPATH=. python ${RPYTHON} --log --opt=3 --output=$@ $<
 
-bin/tiger-interpreter: src/main/tiger-interpreter.py src/main/util.py $(shell find src/*.py) bin
-	PYTHONPATH=. python ${RPYTHON} --log --opt=jit --output=$@ $<
-
-bin:
+bin/tiger-interpreter: src/main/tiger-interpreter.py src/main/util.py $(shell find src/*.py)
 	mkdir -p bin
+	PYTHONPATH=. python ${RPYTHON} --log --opt=jit --output=$@ $<
 
 
 
