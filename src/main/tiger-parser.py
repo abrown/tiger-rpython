@@ -18,7 +18,7 @@ def main(argv):
 
     # parse input program
     try:
-        program = Parser(program_contents).parse()
+        program = Parser(program_contents, argv[1]).parse()
     except ParseError as e:
         print("Parse failure: %s" % e.to_string())
         return 42
