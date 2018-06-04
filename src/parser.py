@@ -156,10 +156,10 @@ class Parser:
             return NilValue()
         elif self.__accept_type(NumberToken):
             token = self.__next()
-            return IntegerValue(token.value)
+            return IntegerValue.from_string(token.value)
         elif self.__accept_and_consume(SymbolToken('-')):
             token = self.__next()
-            return IntegerValue('-' + token.value)
+            return IntegerValue.from_string('-' + token.value)
         elif self.__accept_type(StringToken):
             token = self.__next()
             return StringValue(token.value)

@@ -1,6 +1,55 @@
 from src.environment import Environment
 from src.rpythonized_object import RPythonizedObject
 
+# Begin RPython setup; catch import errors so this can still run in CPython...
+try:
+    from rpython.rlib.jit import JitDriver, elidable, promote, unroll_safe, jit_debug, we_are_jitted
+except ImportError:
+    class JitDriver(object):
+        def __init__(self, **kw): pass
+
+        def jit_merge_point(self, **kw): pass
+
+        def can_enter_jit(self, **kw): pass
+
+
+    def elidable(func):
+        return func
+
+
+    def promote(x):
+        return x
+
+
+    def unroll_safe(func):
+        return func
+
+
+    def jit_debug(string, arg1=0, arg2=0, arg3=0, arg4=0):
+        pass
+
+
+    def we_are_jitted():
+        return False
+
+
+def get_location(code):
+    return "%s" % code.to_string()
+
+
+jitdriver = JitDriver(greens=['code'], reds='auto', get_printable_location=get_location)
+
+
+def jitpolicy(driver):
+    try:
+        from rpython.jit.codewriter.policy import JitPolicy
+        return JitPolicy()
+    except ImportError:
+        raise NotImplemented("Abandon if we are unable to use RPython's JitPolicy")
+
+
+# end of RPython setup
+
 
 class InterpretationError(Exception):
     def __init__(self, reason):
@@ -97,7 +146,7 @@ class Value(Exp):
         pass
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.value() == other.value()
+        return RPythonizedObject.equals(self, other)
 
     def evaluate(self, env=None):
         return self
@@ -117,13 +166,22 @@ class NilValue(Value):
 class IntegerValue(Value):
     def __init__(self, value):
         Value.__init__(self)
-        self.integer = int(value)
+        assert isinstance(value, int)
+        self.integer = value
 
     def value(self):
         return self.integer
 
+    @staticmethod
+    def from_string(number):
+        assert isinstance(number, str)
+        return IntegerValue(int(number))
+
     def to_string(self):
         return '%s(%d)' % (self.__class__.__name__, self.integer)
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.integer == other.integer
 
 
 class StringValue(Value):
@@ -136,6 +194,9 @@ class StringValue(Value):
 
     def to_string(self):
         return '%s(%s)' % (self.__class__.__name__, self.string)
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.string == other.string
 
 
 class ArrayCreation(Exp):
@@ -263,19 +324,15 @@ class FunctionCall(Exp):
         result = None
         if isinstance(declaration, FunctionDeclaration):
             result = declaration.body.evaluate(env)
-            # TODO type-check
+            # TODO type-check result
         elif isinstance(declaration, NativeFunctionDeclaration):
             # only one argument is allowed due to calling RPythonized functions with var-args
-            if len(self.arguments) > 1:
-                raise InterpretationError('Only one argument allowed in native functions: %s' % self.name)
-            elif len(self.arguments) == 1:
+            if len(self.arguments) == 1:
                 result = declaration.function(value)
                 assert isinstance(result, Value) if result is not None else True
                 # TODO type-check result
             else:
-                result = declaration.function()
-                assert isinstance(result, Value) if result is not None else True
-                # TODO type-check result
+                raise InterpretationError('Only one argument allowed in native functions: %s' % self.name)
         else:
             raise InterpretationError('Unknown function type: %s' % declaration.__class__.__name__)
 
@@ -308,7 +365,8 @@ class Assign(Exp):
         return '%s(lvalue=%s, exp=%s)' % (self.__class__.__name__, self.lvalue.to_string(), self.expression.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.expression.equals(other.expression)
+        return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.expression.equals(
+            other.expression)
 
     def evaluate(self, env=None):
         # TODO handle other types of lvalues
@@ -335,7 +393,7 @@ class If(Exp):
     def evaluate(self, env=None):
         condition_value = self.condition.evaluate(env)
         assert isinstance(condition_value, IntegerValue)
-        if condition_value != 0:
+        if condition_value.integer != 0:
             result = self.body_if_true.evaluate(env)
         else:
             result = self.body_if_false.evaluate(env)
@@ -363,6 +421,7 @@ class While(Exp):
             result = self.body.evaluate(env)
             # TODO break
             condition_value = self.condition.evaluate(env)
+            # TODO jitdriver.jit_merge_point(code=self)
         return result
 
 
@@ -396,6 +455,7 @@ class For(Exp):
             result = self.body.evaluate(env)
             # TODO break
             assert result is None
+            jitdriver.jit_merge_point(code=self)
 
         env.pop()
 
@@ -514,15 +574,14 @@ class NativeFunctionDeclaration(Declaration):
         self.function = function
 
     def to_string(self):
-        return '%s(name=%s, parameters=%s, return_type=%s, function=%s)' % (
-            self.__class__.__name__, self.name, dict_to_string(self.parameters), nullable_to_string(self.return_type),
-            self.function)
+        return '%s(name=%s, parameters=%s, return_type=%s)' % (
+            self.__class__.__name__, self.name, list_to_string(self.parameters), nullable_to_string(self.return_type))
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
-               and dict_equals(self.parameters, other.parameters) \
+               and list_equals(self.parameters, other.parameters) \
                and nullable_equals(self.return_type, other.return_type) \
-               and self.function == other.function
+               and nullable_equals(self.function, other.function)
 
 
 class ArrayType(Type):
