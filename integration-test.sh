@@ -1,10 +1,10 @@
 #!/bin/bash
 
 export PYTHONPATH=.
-python_value=$(python src/main.py $1 2>&1)
+python_value=$(python src/main/tiger-parser.py $1 2>&1)
 python_code=$?
 
-rpython_value=$(bin/parser $1 2>&1)
+rpython_value=$(bin/tiger-parser $1 2>&1)
 rpython_code=$?
 
 if [ ${DEBUG} ]; then
