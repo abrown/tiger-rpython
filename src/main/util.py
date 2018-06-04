@@ -35,11 +35,15 @@ def trick_rpython_into_jit_compiling():
     return b
 
 
+STDOUT_FD = 1
+STDERR_FD = 2
+
+
 def tiger_print(value):
     if isinstance(value, IntegerValue):
-        print(str(value.integer))
+        os.write(STDOUT_FD, str(value.integer))
     elif isinstance(value, StringValue):
-        print(value.string)
+        os.write(STDOUT_FD, value.string)
     else:
         raise ValueError('Unknown value type %s' % value.__class__.__name__)
 
