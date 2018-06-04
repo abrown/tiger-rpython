@@ -1,0 +1,9 @@
+let
+  function a(n:int) : int =
+    if (n < 20000) then
+      a(n+1)
+    else
+      n
+in
+  print(a(1))
+end
