@@ -1,6 +1,6 @@
 import os
 
-from src.ast import IntegerValue, NativeFunctionDeclaration, FunctionParameter, TypeId
+from src.ast import IntegerValue, NativeFunctionDeclaration, FunctionParameter, TypeId, StringValue
 from src.environment import Environment
 
 try:
@@ -35,8 +35,13 @@ def trick_rpython_into_jit_compiling():
     return b
 
 
-def tiger_print(object):
-    print(object.to_string())
+def tiger_print(value):
+    if isinstance(value, IntegerValue):
+        print(str(value.integer))
+    elif isinstance(value, StringValue):
+        print(value.string)
+    else:
+        raise ValueError('Unknown value type %s' % value.__class__.__name__)
 
 
 def create_environment_with_natives():
