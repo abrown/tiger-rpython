@@ -28,7 +28,8 @@ def main(argv):
     result = program.evaluate(environment)
 
     # print the result and exit
-    print(result.to_string())
+    if result:
+        print(result.to_string())
     return 0
 
 
