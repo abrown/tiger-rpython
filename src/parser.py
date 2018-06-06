@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from src.ast import NilValue, IntegerValue, StringValue, ArrayCreation, TypeId, RecordCreation, LValue, \
     ObjectCreation, FunctionCall, RecordLValue, ArrayLValue, Assign, If, While, For, Break, Let, \
     TypeDeclaration, ArrayType, VariableDeclaration, FunctionDeclaration, RecordType, Sequence, Multiply, Divide, Add, \
@@ -317,7 +319,7 @@ class Parser:
     def record(self):
         type = self.__expect_type(IdentifierToken)
         self.__expect(SymbolToken('{'))
-        fields = {}
+        fields = OrderedDict()
         while self.__accept_type(IdentifierToken):
             id, exp = self.id_field()
             fields[id] = exp
@@ -371,16 +373,14 @@ class Parser:
         return TypeDeclaration(id, ty)
 
     def type_fields(self):
+        type_fields = OrderedDict()
         if self.__accept_type(IdentifierToken):
-            type_fields = {}
             name, type_id = self.type_field()
             type_fields[name] = type_id
             while self.__accept_and_consume(SymbolToken(',')):
                 name, type_id = self.type_field()
                 type_fields[name] = type_id
-            return type_fields
-        else:
-            return {}
+        return type_fields
 
     def type_field(self):
         id = self.id()
