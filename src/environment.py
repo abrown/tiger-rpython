@@ -8,6 +8,8 @@ class EnvironmentLevel:
         self.bindings = {}  # map of names to indices
         self.expressions = []  # indexed expressions
 
+    def __str__(self):
+        return '%s => %s' % (self.bindings, self.expressions)
 
 class Environment:
     """
@@ -116,3 +118,6 @@ class Environment:
             else:
                 level_index -= 1
         return level if level_index >= 0 else None, expression_index
+
+    def __str__(self):
+        return 'Environment(level=%d, stack=[%s])' % (self.level, ', '.join(str(l) for l in self.stack))

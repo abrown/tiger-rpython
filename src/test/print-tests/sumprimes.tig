@@ -1,5 +1,5 @@
 let
-  var max : int := 100000
+  var max : int := 50
   var s : int := 0
   var n : int := 2
 in
