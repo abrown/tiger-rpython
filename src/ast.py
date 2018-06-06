@@ -305,25 +305,29 @@ class FunctionCall(Exp):
         declaration = env.get(self.name)
         if not declaration:
             raise InterpretationError('Could not find function %s' % self.name)
+        assert(isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration))
 
         # check arguments
         if len(self.arguments) != len(declaration.parameters):
             raise InterpretationError('Incorrect number of arguments passed (%d); expected %d for function %s' % (
                 len(self.arguments), len(declaration.parameters), self.name))
 
+        # use declaration environment for function call (note: push() allows us to reuse the frame)
+        frame = declaration.environment.clone()
+        frame.push()
+
         # evaluate arguments
-        env.push()
         value = None
         for i in range(len(self.arguments)):
             name = declaration.parameters[i].name
             value = self.arguments[i].evaluate(env)
-            # TODO type-check
-            env.set(name, value)
+            assert(isinstance(value, Value))
+            frame.set_current_level(name, value)
 
         # evaluate body
         result = None
         if isinstance(declaration, FunctionDeclaration):
-            result = declaration.body.evaluate(env)
+            result = declaration.body.evaluate(frame)
             # TODO type-check result
         elif isinstance(declaration, NativeFunctionDeclaration):
             # only one argument is allowed due to calling RPythonized functions with var-args
@@ -336,7 +340,6 @@ class FunctionCall(Exp):
         else:
             raise InterpretationError('Unknown function type: %s' % declaration.__class__.__name__)
 
-        env.pop()
         return result
 
 
@@ -393,9 +396,10 @@ class If(Exp):
     def evaluate(self, env=None):
         condition_value = self.condition.evaluate(env)
         assert isinstance(condition_value, IntegerValue)
+        result = None
         if condition_value.integer != 0:
             result = self.body_if_true.evaluate(env)
-        else:
+        elif self.body_if_false is not None:
             result = self.body_if_false.evaluate(env)
         return result
 
@@ -551,6 +555,7 @@ class FunctionDeclaration(Declaration):
         self.return_type = return_type
         assert isinstance(body, Exp)
         self.body = body
+        self.environment = Environment()  # to be reset when the function declaration is evaluated
 
     def to_string(self):
         return '%s(name=%s, parameters=%s, return_type=%s, body=%s)' % (
@@ -563,6 +568,11 @@ class FunctionDeclaration(Declaration):
                and nullable_equals(self.return_type, other.return_type) \
                and self.body.equals(other.body)
 
+    def evaluate(self, env=None):
+        assert(env is not None)
+        env.set_current_level(self.name, self)
+        self.environment = env.fix()
+
 
 class NativeFunctionDeclaration(Declaration):
     def __init__(self, name, parameters=[], return_type=None, function=None):
@@ -572,6 +582,7 @@ class NativeFunctionDeclaration(Declaration):
         assert isinstance(return_type, TypeId) or return_type is None
         self.return_type = return_type
         self.function = function
+        self.environment = Environment()  # native functions cannot touch the interpreter environment
 
     def to_string(self):
         return '%s(name=%s, parameters=%s, return_type=%s)' % (
