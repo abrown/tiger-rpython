@@ -10,7 +10,7 @@ class TestEvaluatingExprTests(unittest.TestCase):
 def generate_expression_test(path):
     def test(self):
         program = parse_file(path)
-        result = program.evaluate()
+        result = program.evaluate(None)
 
         expected = parse_file(path.replace('.tig', '.out.bak'))
 
