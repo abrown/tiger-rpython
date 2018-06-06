@@ -1,0 +1,4 @@
+for i := 1 to 9 do
+  (i := i + 1;
+   print(i);
+   i)

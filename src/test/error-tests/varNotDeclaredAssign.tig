@@ -1,0 +1,5 @@
+let
+in
+  a := 2;
+  print(a)
+end
