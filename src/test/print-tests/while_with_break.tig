@@ -1,0 +1,6 @@
+let
+  var i : int := 0
+in
+  while 1 do
+    if i < 10 then (print(i); i := i + 1) else break
+end

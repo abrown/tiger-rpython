@@ -305,7 +305,7 @@ class FunctionCall(Exp):
         declaration = env.get(self.name)
         if not declaration:
             raise InterpretationError('Could not find function %s' % self.name)
-        assert(isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration))
+        assert (isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration))
 
         # check arguments
         if len(self.arguments) != len(declaration.parameters):
@@ -321,7 +321,7 @@ class FunctionCall(Exp):
         for i in range(len(self.arguments)):
             name = declaration.parameters[i].name
             value = self.arguments[i].evaluate(env)
-            assert(isinstance(value, Value))
+            assert (isinstance(value, Value))
             frame.set_current_level(name, value)
 
         # evaluate body
@@ -422,8 +422,10 @@ class While(Exp):
         assert isinstance(condition_value, IntegerValue)
         result = None
         while condition_value.integer != 0:
-            result = self.body.evaluate(env)
-            # TODO break
+            try:
+                result = self.body.evaluate(env)
+            except BreakException:
+                break
             condition_value = self.condition.evaluate(env)
             # TODO jitdriver.jit_merge_point(code=self)
         return result
@@ -445,7 +447,6 @@ class For(Exp):
             other.start) and self.end.equals(other.end) and self.body.equals(other.body)
 
     def evaluate(self, env):
-        # TODO remove env is None checks
         env.push()
         start_value = self.start.evaluate(env)
         assert isinstance(start_value, IntegerValue)
@@ -456,15 +457,22 @@ class For(Exp):
         for i in range(iterator.integer, end_value.integer + 1):
             iterator.integer = i
             env.set_current_level(self.var, iterator)
-            result = self.body.evaluate(env)
-            # TODO break
-            assert result is None
+            try:
+                result = self.body.evaluate(env)
+                assert result is None
+            except BreakException:
+                break
             jitdriver.jit_merge_point(code=self)
 
         env.pop()
 
 
 class Break(Exp):
+    def evaluate(self, env):
+        raise BreakException()
+
+
+class BreakException(Exception):
     pass
 
 
@@ -569,7 +577,7 @@ class FunctionDeclaration(Declaration):
                and self.body.equals(other.body)
 
     def evaluate(self, env):
-        assert(env is not None)
+        assert (env is not None)
         env.set_current_level(self.name, self)
         self.environment = env.fix()
 

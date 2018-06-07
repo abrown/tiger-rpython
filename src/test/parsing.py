@@ -224,6 +224,10 @@ class TestParsing(unittest.TestCase):
     def test_equality_of_lvalues(self):
         self.assertEqual(LValue('a'), LValue('a'))
 
+    def test_break(self):
+        self.assertParsesTo('for i := 1 to 9 do if i > 5 then break else print(i)',
+                            For('i', IntegerValue(1), IntegerValue(9), If(GreaterThan(LValue('i'), IntegerValue(5)), Break(), FunctionCall('print', [LValue('i')]))))
+
 
 if __name__ == '__main__':
     unittest.main()

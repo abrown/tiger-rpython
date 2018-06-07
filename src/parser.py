@@ -177,7 +177,7 @@ class Parser:
             return self.while_do()
         elif self.__accept(KeywordToken('for')):
             return self.for_do()
-        elif self.__accept(KeywordToken('break')):
+        elif self.__accept_and_consume(KeywordToken('break')):
             return Break()
         elif self.__accept(KeywordToken('let')):
             return self.let()
