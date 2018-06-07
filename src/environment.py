@@ -8,6 +8,8 @@ class EnvironmentLevel:
         self.bindings = {}  # map of names to indices
         self.expressions = []  # indexed expressions
 
+    def __str__(self):
+        return '%s => %s' % (self.bindings, self.expressions)
 
 class Environment:
     """
@@ -16,9 +18,9 @@ class Environment:
     To find a name (see __locate__), inspect each dictionary at each level until the name is found and return the level and its expression index
     """
 
-    def __init__(self):
-        self.level = 0
-        self.stack = [EnvironmentLevel()]
+    def __init__(self, level=0, stack=None):
+        self.level = level
+        self.stack = stack or [EnvironmentLevel()]
 
     def push(self):
         """Create a new environment level (i.e. frame)"""
@@ -72,12 +74,37 @@ class Environment:
         return level.bindings.pop(name, None)
 
     def size(self):
-        """Non-optimized onvenience method; count the number of unique names in the entire environment"""
+        """Non-optimized convenience method; count the number of unique names in the entire environment"""
         names = {}
         for level in self.stack:
             for name in level.bindings:
                 names[name] = 1
         return len(names)
+
+    def clone(self):
+        """Clone an environment by copying the stack (note that the levels will only be copied shallowly so fix() may
+        be necessary so the levels are immune to updates from other sources)"""
+        return Environment(self.level, list(self.stack))
+
+    def fix(self):
+        """Collapse all of the levels into one to fix the current global display; this has the theoretical benefit of
+        making clone() faster since only a 1-item list is copied. In other words, using fix() assumes that a function
+        will be declared once (fixed) and called many times (clone)"""
+        new_level = EnvironmentLevel()
+        for level in self.stack:
+            for name in level.bindings:
+                old_index = level.bindings[name]
+                expression = level.expressions[old_index]
+                if name in new_level.bindings:
+                    # if it exists in the current level, overwrite it
+                    new_index = new_level.bindings[name]
+                    new_level.expressions[new_index] = expression
+                else:
+                    # if not, add it
+                    new_index = len(new_level.expressions)
+                    new_level.bindings[name] = new_index
+                    new_level.expressions.append(expression)
+        return Environment(0, [new_level])
 
     # TODO make elidable only if we can guarantee that push/pop have not changed
     def __locate__(self, name):
@@ -91,3 +118,6 @@ class Environment:
             else:
                 level_index -= 1
         return level if level_index >= 0 else None, expression_index
+
+    def __str__(self):
+        return 'Environment(level=%d, stack=[%s])' % (self.level, ', '.join(str(l) for l in self.stack))

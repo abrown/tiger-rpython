@@ -5,5 +5,5 @@ let
     else
       fib(n-1) + fib(n-2)
 in
-  print(fib(45))
+  print(fib(25))
 end

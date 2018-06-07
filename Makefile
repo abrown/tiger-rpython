@@ -9,7 +9,7 @@ test:
 integration-test: integration-test-parsing integration-test-evaluating
 
 integration-test-parsing: bin/tiger-parser
-	$(foreach test, $(shell find 3rd/appel-modern/*.tig), ./src/integration-test/python-vs-rpython-parsing.sh $(test);)
+	$(foreach test, $(shell find src/test/appel-tests/*.tig), ./src/integration-test/python-vs-rpython-parsing.sh $(test);)
 
 integration-test-evaluating: bin/tiger-interpreter
 	$(foreach test, $(shell find src/test/print-tests/*.tig), ./src/integration-test/rpython-evaluating.sh $(test);)

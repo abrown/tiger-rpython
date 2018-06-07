@@ -63,7 +63,7 @@ class InterpretationError(Exception):
 
 
 class Program(RPythonizedObject):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         pass
         # TODO implement in sub-classes
 
@@ -130,7 +130,7 @@ class Declaration(Program):
     def __init__(self, name):
         self.name = name
 
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         env.set_current_level(self.name, self)
 
 
@@ -148,7 +148,7 @@ class Value(Exp):
     def equals(self, other):
         return RPythonizedObject.equals(self, other)
 
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         return self
 
 
@@ -262,7 +262,7 @@ class LValue(Exp):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and nullable_equals(self.next, other.next)
 
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         if not env:
             raise InterpretationError('No environment available at %s' % self.to_string())
         return env.get(self.name)
@@ -300,30 +300,34 @@ class FunctionCall(Exp):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and list_equals(self.arguments, other.arguments)
 
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         # find declaration
         declaration = env.get(self.name)
         if not declaration:
             raise InterpretationError('Could not find function %s' % self.name)
+        assert(isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration))
 
         # check arguments
         if len(self.arguments) != len(declaration.parameters):
             raise InterpretationError('Incorrect number of arguments passed (%d); expected %d for function %s' % (
                 len(self.arguments), len(declaration.parameters), self.name))
 
+        # use declaration environment for function call (note: push() allows us to reuse the frame)
+        frame = declaration.environment.clone()
+        frame.push()
+
         # evaluate arguments
-        env.push()
         value = None
         for i in range(len(self.arguments)):
             name = declaration.parameters[i].name
             value = self.arguments[i].evaluate(env)
-            # TODO type-check
-            env.set(name, value)
+            assert(isinstance(value, Value))
+            frame.set_current_level(name, value)
 
         # evaluate body
         result = None
         if isinstance(declaration, FunctionDeclaration):
-            result = declaration.body.evaluate(env)
+            result = declaration.body.evaluate(frame)
             # TODO type-check result
         elif isinstance(declaration, NativeFunctionDeclaration):
             # only one argument is allowed due to calling RPythonized functions with var-args
@@ -336,7 +340,6 @@ class FunctionCall(Exp):
         else:
             raise InterpretationError('Unknown function type: %s' % declaration.__class__.__name__)
 
-        env.pop()
         return result
 
 
@@ -368,7 +371,7 @@ class Assign(Exp):
         return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.expression.equals(
             other.expression)
 
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         # TODO handle other types of lvalues
         value = self.expression.evaluate(env)
         env.set(self.lvalue.name, value)
@@ -390,12 +393,13 @@ class If(Exp):
                and self.body_if_true.equals(other.body_if_true) \
                and nullable_equals(self.body_if_false, other.body_if_false)
 
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         condition_value = self.condition.evaluate(env)
         assert isinstance(condition_value, IntegerValue)
+        result = None
         if condition_value.integer != 0:
             result = self.body_if_true.evaluate(env)
-        else:
+        elif self.body_if_false is not None:
             result = self.body_if_false.evaluate(env)
         return result
 
@@ -413,7 +417,7 @@ class While(Exp):
         return RPythonizedObject.equals(self, other) and self.condition.equals(other.condition) and self.body.equals(
             other.body)
 
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         condition_value = self.condition.evaluate(env)
         assert isinstance(condition_value, IntegerValue)
         result = None
@@ -440,7 +444,7 @@ class For(Exp):
         return RPythonizedObject.equals(self, other) and self.var == other.var and self.start.equals(
             other.start) and self.end.equals(other.end) and self.body.equals(other.body)
 
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         # TODO remove env is None checks
         env.push()
         start_value = self.start.evaluate(env)
@@ -478,7 +482,7 @@ class Let(Exp):
                and list_equals(self.declarations, other.declarations) \
                and list_equals(self.expressions, other.expressions)
 
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         if not isinstance(env, Environment):
             raise InterpretationError('No environment in %s' % self.to_string())
 
@@ -522,7 +526,7 @@ class VariableDeclaration(Declaration):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and nullable_equals(self.type, other.type) and self.exp.equals(other.exp)
 
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         value = self.exp.evaluate(env)
         # TODO type-check
         env.set_current_level(self.name, value)
@@ -551,6 +555,7 @@ class FunctionDeclaration(Declaration):
         self.return_type = return_type
         assert isinstance(body, Exp)
         self.body = body
+        self.environment = Environment()  # to be reset when the function declaration is evaluated
 
     def to_string(self):
         return '%s(name=%s, parameters=%s, return_type=%s, body=%s)' % (
@@ -563,6 +568,11 @@ class FunctionDeclaration(Declaration):
                and nullable_equals(self.return_type, other.return_type) \
                and self.body.equals(other.body)
 
+    def evaluate(self, env):
+        assert(env is not None)
+        env.set_current_level(self.name, self)
+        self.environment = env.fix()
+
 
 class NativeFunctionDeclaration(Declaration):
     def __init__(self, name, parameters=[], return_type=None, function=None):
@@ -572,6 +582,7 @@ class NativeFunctionDeclaration(Declaration):
         assert isinstance(return_type, TypeId) or return_type is None
         self.return_type = return_type
         self.function = function
+        self.environment = Environment()  # native functions cannot touch the interpreter environment
 
     def to_string(self):
         return '%s(name=%s, parameters=%s, return_type=%s)' % (
@@ -616,7 +627,7 @@ class Sequence(Exp):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and list_equals(self.expressions, other.expressions)
 
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         value = None
         for expression in self.expressions:
             value = expression.evaluate(env)
@@ -652,72 +663,72 @@ class BinaryOperation(Exp):
 
 
 class Multiply(BinaryOperation):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int * right_int)
 
 
 class Divide(BinaryOperation):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int // right_int)
 
 
 class Add(BinaryOperation):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int + right_int)
 
 
 class Subtract(BinaryOperation):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int - right_int)
 
 
 class GreaterThanOrEquals(BinaryOperation):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int >= right_int else IntegerValue(0)
 
 
 class LessThanOrEquals(BinaryOperation):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int <= right_int else IntegerValue(0)
 
 
 class Equals(BinaryOperation):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         (left, right) = self.evaluate_sides_to_value(env)
         return IntegerValue(1) if left.equals(right) else IntegerValue(0)
 
 
 class NotEquals(BinaryOperation):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         (left, right) = self.evaluate_sides_to_value(env)
         return IntegerValue(1) if not left.equals(right) else IntegerValue(0)
 
 
 class GreaterThan(BinaryOperation):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int > right_int else IntegerValue(0)
 
 
 class LessThan(BinaryOperation):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int < right_int else IntegerValue(0)
 
 
 class And(BinaryOperation):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int and right_int else IntegerValue(0)
 
 
 class Or(BinaryOperation):
-    def evaluate(self, env=None):
+    def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int or right_int else IntegerValue(0)

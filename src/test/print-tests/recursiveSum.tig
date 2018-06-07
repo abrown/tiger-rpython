@@ -1,6 +1,6 @@
 let
   function a(n:int) : int =
-    if (n < 20000) then
+    if (n < 1000) then
       a(n+1)
     else
       n

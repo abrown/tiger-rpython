@@ -1,8 +1,13 @@
+import sys
 import unittest
 
 from src.ast import NativeFunctionDeclaration, FunctionParameter, TypeId, IntegerValue, StringValue
 from src.environment import Environment
 from src.test.util import parse_file, list_test_files, get_file_name, read_file
+
+
+# note: this may be helpful for testing larger recursion depths
+sys.setrecursionlimit(10000)
 
 
 class TestEvaluatingPrintTests(unittest.TestCase):
@@ -25,7 +30,7 @@ def generate_print_test(path):
             elif isinstance(s, StringValue):
                 stdout.value += s.string
             else:
-                raise ValueError('Unknown value type ' + type(s))
+                raise ValueError('Unknown value type ' + str(s))
 
         env = Environment()
         env.set('print', NativeFunctionDeclaration('print', [FunctionParameter('s', TypeId('str'))], None, tiger_print))
