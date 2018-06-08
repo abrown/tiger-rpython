@@ -2,3 +2,4 @@ let
   function add(a:int, b:int) : int = a + b
 in
   print(add(1))
+end
