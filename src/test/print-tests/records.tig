@@ -1,0 +1,6 @@
+let
+  type list = {head: int, tail: list}
+  var r := list {head = 42, tail = list {head = 43, tail = nil}}
+in
+  (print(r.head); print(r.tail.head))
+end

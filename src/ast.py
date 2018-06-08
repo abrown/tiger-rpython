@@ -245,15 +245,46 @@ class ArrayValue(Value):
 
 class RecordCreation(Exp):
     def __init__(self, type, fields):
-        self.type = type
+        assert (isinstance(type, TypeId))
+        self.type_id = type
+        # assert (isinstance(fields, dict))
         self.fields = fields
 
     def to_string(self):
-        return '%s(type=%s, fields=%s)' % (self.__class__.__name__, self.type.to_string(), dict_to_string(self.fields))
+        return '%s(type=%s, fields=%s)' % (
+            self.__class__.__name__, self.type_id.to_string(), dict_to_string(self.fields))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.type.equals(other.type) and dict_equals(self.fields,
-                                                                                                      other.fields)
+        return RPythonizedObject.equals(self, other) and self.type_id.equals(other.type_id) \
+               and dict_equals(self.fields, other.fields)
+
+    def evaluate(self, env):
+        type = env.get(self.type_id.name, env.type_stack)
+        assert (isinstance(type, RecordType))
+        values = [None] * len(type.field_types)
+        index = 0
+        for field in type.field_types:
+            value = self.fields[field].evaluate(env)
+            values[index] = value
+            index += 1
+        assert (len(type.field_types) == len(values))
+        return RecordValue(type, values)
+
+
+class RecordValue(Value):
+    def __init__(self, type, values=None):
+        Value.__init__(self)
+        assert (isinstance(type, RecordType))
+        self.type = type
+        assert (isinstance(values, list))
+        self.values = values
+
+    def to_string(self):
+        return '%s(type=%s, values=%s)' % (self.__class__.__name__, self.type.to_string(), list_to_string(self.values))
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.type.equals(other.type) and list_equals(self.values,
+                                                                                                      other.values)
 
 
 class ObjectCreation(Exp):
@@ -307,7 +338,10 @@ class LValue(Exp):
                 assert (isinstance(index, IntegerValue))
                 value = value.array[index.integer]
             elif isinstance(lvalue, RecordLValue):
-                raise InterpretationError('record lvalue not yet implemented')
+                assert (isinstance(value, RecordValue))
+                index = value.type.field_positions[lvalue.name]
+                assert (isinstance(index, int))
+                value = value.values[index]
             else:
                 raise InterpretationError('Incorrect AST; expected an array- or record-lvalue')
             lvalue = lvalue.next
@@ -664,14 +698,20 @@ class ArrayType(Type):
 
 
 class RecordType(Type):
-    def __init__(self, type_fields):
-        self.type_fields = type_fields
+    def __init__(self, field_types):
+        # assert (isinstance(field_types, dict))
+        self.field_types = field_types
+        self.field_positions = {}
+        index = 0
+        for field in field_types:
+            self.field_positions[field] = index
+            index += 1
 
     def to_string(self):
-        return '%s(type_fields=%s)' % (self.__class__.__name__, dict_to_string(self.type_fields))
+        return '%s(field_types=%s)' % (self.__class__.__name__, dict_to_string(self.field_types))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and dict_equals(self.type_fields, other.type_fields)
+        return RPythonizedObject.equals(self, other) and dict_equals(self.field_types, other.field_types)
 
 
 class Sequence(Exp):

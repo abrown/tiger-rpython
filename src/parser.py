@@ -154,7 +154,7 @@ class Parser:
         return left
 
     def expression_without_precedence(self):
-        if self.__accept(KeywordToken('nil')):
+        if self.__accept_and_consume(KeywordToken('nil')):
             return NilValue()
         elif self.__accept_type(NumberToken):
             token = self.__next()
