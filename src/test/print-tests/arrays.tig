@@ -1,0 +1,8 @@
+let
+  type iarray = array of int
+  var l := 3
+  var a := iarray [l] of 0
+in
+  for i := 0 to (l - 1) do
+    print(a[i])
+end

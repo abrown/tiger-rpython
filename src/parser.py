@@ -298,7 +298,7 @@ class Parser:
         return ObjectCreation(TypeId(type_id.value))
 
     def operation(self, operation, left, right):
-        operator_class = OPERATORS[operation]  # TODO probably will not work in RPython
+        operator_class = OPERATORS[operation]
         return operator_class(left, right)
 
     def parameters(self):
@@ -409,7 +409,7 @@ class Parser:
         body = self.expression()
         return While(condition, body)
 
-    # navigation methods TODO make private
+    # navigation methods
 
     def __peek(self, index=0):
         """Peek at the next token"""

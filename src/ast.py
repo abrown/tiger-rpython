@@ -200,18 +200,47 @@ class StringValue(Value):
 
 
 class ArrayCreation(Exp):
-    def __init__(self, type, inner, outer):
-        self.outer = outer
-        self.inner = inner
-        self.type = type
+    def __init__(self, type, length, initial_value):
+        assert (isinstance(length, Exp))
+        self.length_expression = length
+        assert (isinstance(initial_value, Exp))
+        self.initial_value_expression = initial_value
+        assert (isinstance(type, TypeId))
+        self.type_id = type
 
     def to_string(self):
-        return '%s(outer=%s, inner=%s, type=%s)' % (
-            self.__class__.__name__, self.outer.to_string(), self.inner.to_string(), self.type.to_string())
+        return '%s(initial_value=%s, length=%s, type=%s)' % (
+            self.__class__.__name__, self.initial_value_expression.to_string(), self.length_expression.to_string(),
+            self.type_id.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.outer.equals(other.outer) and self.inner.equals(
-            other.inner) and self.type.equals(other.type)
+        return RPythonizedObject.equals(self, other) and self.initial_value_expression.equals(
+            other.initial_value_expression) and self.length_expression.equals(
+            other.length_expression) and self.type_id.equals(other.type_id)
+
+    def evaluate(self, env):
+        length = self.length_expression.evaluate(env)
+        assert (isinstance(length, IntegerValue))
+        initial_value = self.initial_value_expression.evaluate(env)
+        assert (isinstance(initial_value, Value))
+        # TODO type-check
+        type = env.get(self.type_id.name, env.type_stack)
+        return ArrayValue(length.integer, initial_value)
+
+
+class ArrayValue(Value):
+    def __init__(self, length=0, initial_value=None):
+        Value.__init__(self)
+        self.length = length
+        assert (isinstance(initial_value, Value) or initial_value is None)
+        self.array = [initial_value] * length
+
+    def to_string(self):
+        return '%s(length=%d, array=%s)' % (self.__class__.__name__, self.length, list_to_string(self.array))
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.length == other.length and list_equals(self.array,
+                                                                                                     other.array)
 
 
 class RecordCreation(Exp):
@@ -263,10 +292,27 @@ class LValue(Exp):
                and nullable_equals(self.next, other.next)
 
     def evaluate(self, env):
-        if not env:
-            raise InterpretationError('No environment available at %s' % self.to_string())
-        return env.get(self.name)
-        # TODO handle self.next
+        lvalue = self
+
+        # extract normal lvalue from environment
+        assert (isinstance(lvalue, LValue))
+        value = env.get(self.name)
+        lvalue = lvalue.next
+
+        # iterate over records and arrays
+        while lvalue:
+            if isinstance(lvalue, ArrayLValue):
+                assert (isinstance(value, ArrayValue))
+                index = lvalue.exp.evaluate(env)
+                assert (isinstance(index, IntegerValue))
+                value = value.array[index.integer]
+            elif isinstance(lvalue, RecordLValue):
+                raise InterpretationError('record lvalue not yet implemented')
+            else:
+                raise InterpretationError('Incorrect AST; expected an array- or record-lvalue')
+            lvalue = lvalue.next
+
+        return value
 
 
 class RecordLValue(LValue):
@@ -275,8 +321,8 @@ class RecordLValue(LValue):
 
 class ArrayLValue(LValue):
     def __init__(self, exp, next=None):
+        LValue.__init__(self, None, next)
         self.exp = exp
-        self.next = next
 
     def to_string(self):
         return '%s(exp=%s, next=%s)' % (
@@ -519,6 +565,9 @@ class TypeDeclaration(Declaration):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name and self.type.equals(other.type)
 
+    def evaluate(self, env):
+        env.set_current_level(self.name, self.type, env.type_stack)
+
 
 class VariableDeclaration(Declaration):
     def __init__(self, name, type, exp):
@@ -542,6 +591,7 @@ class VariableDeclaration(Declaration):
 
 class FunctionParameter(Declaration):
     def __init__(self, name, type=None):
+        Declaration.__init__(self, name)
         self.name = name
         assert isinstance(type, TypeId) or type is None
         self.type = type
@@ -583,10 +633,10 @@ class FunctionDeclaration(Declaration):
 
 
 class NativeFunctionDeclaration(Declaration):
-    def __init__(self, name, parameters=[], return_type=None, function=None):
+    def __init__(self, name, parameters=None, return_type=None, function=None):
         Declaration.__init__(self, name)
-        assert isinstance(parameters, list)
-        self.parameters = parameters
+        self.parameters = parameters or []
+        assert isinstance(self.parameters, list)
         assert isinstance(return_type, TypeId) or return_type is None
         self.return_type = return_type
         self.function = function
@@ -599,8 +649,7 @@ class NativeFunctionDeclaration(Declaration):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and list_equals(self.parameters, other.parameters) \
-               and nullable_equals(self.return_type, other.return_type) \
-               and nullable_equals(self.function, other.function)
+               and nullable_equals(self.return_type, other.return_type)
 
 
 class ArrayType(Type):
