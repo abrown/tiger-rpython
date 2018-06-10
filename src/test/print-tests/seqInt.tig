@@ -1,0 +1,7 @@
+let
+  function a(n:int) : int =
+    (n := n + 1;
+     n)
+in
+  print(a(1))
+end

@@ -1,10 +1,20 @@
 let
-  var a : int := 1
+  function f() : int =
+    let
+      function g() : int =
+        let
+          function h() : int =
+            let
+              var n : int := 1
+            in
+              n
+            end
+        in
+          h()
+        end
+    in
+      g()
+    end
 in
-  (let
-    var a : int := 2
-  in
-    print(a)
-  end;
-  print(a))
+  print(f())
 end

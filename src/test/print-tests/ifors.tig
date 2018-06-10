@@ -1,0 +1,21 @@
+let
+  var t : int := 1
+  var f : int := 0
+in 
+  if (t | t) then
+    print(1)
+  else
+    print(0);
+  if (t | f) then
+    print(2)
+  else
+    print(0);
+  if (f | t) then
+    print(3)
+  else
+    print(0);
+  if (f | f) then
+    print(0)
+  else
+    print(4)
+end

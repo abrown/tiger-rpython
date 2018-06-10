@@ -1,0 +1,10 @@
+let
+  function f() : int =
+    let
+      var n : int := 1
+    in
+      n
+    end
+in
+  print(f())
+end
