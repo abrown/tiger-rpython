@@ -1,0 +1,34 @@
+/* From http://flint.cs.yale.edu/cs421/lectureNotes/c08.pdf */
+let
+  type intarray = array of int
+  var a := intarray [4] of 0
+  function readarray() =
+    (a[0] := 3; a[1] := 2; a[2] := 4; a[3] := 1)
+  function exchange(x : int, y : int) =
+    let var z := a[x] in a[x] := a[y]; a[y] := z end
+  function quicksort(m : int, n : int) =
+    let function partition(y : int, z : int) : int =
+      let
+        var i := y
+        var j := z + 1
+      in
+        (while i < j do
+          (i := i + 1; while a[i] < a[y] do i := i + 1;
+          j := j - 1; while a[j] > a[y] do j := j - 1;
+          if i < j then exchange(i, j));
+        exchange(y, j); j)
+      end
+    in
+      if n > m then
+        let
+          var i := partition(m, n)
+        in
+          (quicksort(m, i - 1);
+          quicksort(i + 1, n))
+        end
+    end
+in
+  (readarray();
+  quicksort(0, 3);
+  print(a))
+end
