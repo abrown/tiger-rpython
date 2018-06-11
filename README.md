@@ -19,7 +19,7 @@ Pre-requisites: _git_, _make_, _Python 2.7_.
 git clone https://github.com/mozillazg/pypy
 pypy/rpython/bin/rpython --help
 
-# clone the tiger-rpython repository
+# clone the tiger-rpython repository (note: currently the Makefile expects the pypy directory to be in the parent directory)
 git clone https://github.com/abrown/tiger-python
 cd tiger-python
 
@@ -62,3 +62,16 @@ these, execute:
 make integration-test
 ```
 
+
+### Features:
+
+This list describes which Tiger language features implemented (and which not):
+
+ - Valid Tiger programs are parsed correctly; no errors are raised, however, for typing issues (e.g. `var i : int = "a string"`)
+ - Except for `print(s : string)`, the standard library functions (e.g. `concat`, `exit`, `substring`) are not implemented
+ - Control flow expressions such as sequences, `if-then-else`, `for`, and `while` evaluate as expected, including `break` for loops
+ - Function declarations (including nesting) and function calls (left-to-right parameter evaluation)
+ - Declare and assign to variables with `lets`, including nested `lets`
+ - Allows creation of arrays and records and referencing them with lvalues
+ - No type-checking of values (yet)
+ 
