@@ -34,11 +34,11 @@ except ImportError:
         return False
 
 
-def get_location(code):
+def get_location(code, exp, env):
     return "%s" % code.to_string()
 
 
-jitdriver = JitDriver(greens=['code'], reds='auto', get_printable_location=get_location)
+jitdriver = JitDriver(greens=['code', 'expression', 'environment'], reds='auto', get_printable_location=get_location)
 
 
 def jitpolicy(driver):
@@ -49,9 +49,8 @@ def jitpolicy(driver):
         raise NotImplemented("Abandon if we are unable to use RPython's JitPolicy")
 
 
-# TODO inline
 def loop(code, expression, environment):
-    jitdriver.jit_merge_point(code=code)
+    jitdriver.jit_merge_point(code=code, expression=expression, environment=environment)
     return expression.evaluate(environment)
 
 
