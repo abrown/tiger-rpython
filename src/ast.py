@@ -76,15 +76,8 @@ class InterpretationError(Exception):
         return self.to_string()
 
 
-ALL_FIELDS = ['arguments[*]', 'array', 'body', 'body_if_false', 'body_if_true', 'condition', 'declarations[*]',
-              'environment', 'expression', 'expressions[*]', 'end', 'fields[*]', 'field_types[*]', 'field_positions[*]',
-              'initial_value_expression', 'integer', 'left', 'length', 'length_expression', 'lvalue', 'name', 'next',
-              'parameters[*]', 'return_type', 'right', 'start', 'string', 'type', 'type_id', 'type_name', 'values[*]',
-              'var']
-
-
 class Program(RPythonizedObject):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         pass
@@ -96,12 +89,12 @@ class Program(RPythonizedObject):
 
 
 class Exp(Program):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
     pass
 
 
 class Declaration(Program):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, name):
         self.name = name
@@ -111,13 +104,13 @@ class Declaration(Program):
 
 
 class Type(Program):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     pass
 
 
 class Value(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self):
         pass
@@ -133,7 +126,7 @@ class Value(Exp):
 
 
 class NilValue(Value):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self):
         Value.__init__(self)
@@ -146,7 +139,7 @@ class NilValue(Value):
 
 
 class IntegerValue(Value):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, value):
         Value.__init__(self)
@@ -169,7 +162,7 @@ class IntegerValue(Value):
 
 
 class StringValue(Value):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, value):
         Value.__init__(self)
@@ -186,7 +179,7 @@ class StringValue(Value):
 
 
 class ArrayCreation(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, type, length, initial_value):
         assert (isinstance(length, Exp))
@@ -217,7 +210,7 @@ class ArrayCreation(Exp):
 
 
 class ArrayValue(Value):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, length=0, initial_value=None):
         Value.__init__(self)
@@ -234,7 +227,7 @@ class ArrayValue(Value):
 
 
 class RecordCreation(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, type, fields):
         assert (isinstance(type, TypeId))
@@ -264,7 +257,7 @@ class RecordCreation(Exp):
 
 
 class RecordValue(Value):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, type, values=None):
         Value.__init__(self)
@@ -282,7 +275,7 @@ class RecordValue(Value):
 
 
 class TypeId(Declaration):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, name):
         Declaration.__init__(self, name)
@@ -295,7 +288,7 @@ class TypeId(Declaration):
 
 
 class LValue(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, name, next=None):
         self.name = name
@@ -321,7 +314,7 @@ class LValue(Exp):
         while lvalue:
             if isinstance(lvalue, ArrayLValue):
                 assert (isinstance(value, ArrayValue))
-                index = lvalue.expression.evaluate(env)
+                index = lvalue.exp.evaluate(env)
                 assert (isinstance(index, IntegerValue))
                 value = value.array[index.integer]
             elif isinstance(lvalue, RecordLValue):
@@ -337,28 +330,28 @@ class LValue(Exp):
 
 
 class RecordLValue(LValue):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
     pass
 
 
 class ArrayLValue(LValue):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
-    def __init__(self, expression, next=None):
+    def __init__(self, exp, next=None):
         LValue.__init__(self, None, next)
-        self.expression = expression
+        self.exp = exp
 
     def to_string(self):
         return '%s(exp=%s, next=%s)' % (
-            self.__class__.__name__, self.expression.to_string(), nullable_to_string(self.next))
+            self.__class__.__name__, self.exp.to_string(), nullable_to_string(self.next))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.expression.equals(other.expression) \
+        return RPythonizedObject.equals(self, other) and self.exp.equals(other.exp) \
                and nullable_equals(self.next, other.next)
 
 
 class FunctionCall(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, name, arguments):
         self.name = name
@@ -416,7 +409,7 @@ class FunctionCall(Exp):
 
 
 class Assign(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, lvalue, expression):
         self.lvalue = lvalue
@@ -436,7 +429,7 @@ class Assign(Exp):
 
 
 class If(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, condition, body_if_true, body_if_false=None):
         self.condition = condition
@@ -465,7 +458,7 @@ class If(Exp):
 
 
 class While(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, condition, body):
         self.condition = condition
@@ -495,7 +488,7 @@ class While(Exp):
 
 
 class For(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, var, start, end, body):
         self.var = var
@@ -532,7 +525,7 @@ class For(Exp):
 
 
 class Break(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         raise BreakException()
@@ -543,11 +536,10 @@ class BreakException(Exception):
 
 
 class Let(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, declarations, expressions):
         self.declarations = declarations
-        assert(isinstance(expressions, list))
         self.expressions = expressions
 
     def to_string(self):
@@ -578,7 +570,7 @@ class Let(Exp):
 
 
 class TypeDeclaration(Declaration):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, name, type):
         Declaration.__init__(self, name)
@@ -595,29 +587,29 @@ class TypeDeclaration(Declaration):
 
 
 class VariableDeclaration(Declaration):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
-    def __init__(self, name, type, expression):
+    def __init__(self, name, type, exp):
         Declaration.__init__(self, name)
         self.type = type
-        self.expression = expression
+        self.exp = exp
 
     def to_string(self):
         return '%s(name=%s, type=%s, exp=%s)' % (
-            self.__class__.__name__, self.name, nullable_to_string(self.type), self.expression.to_string())
+            self.__class__.__name__, self.name, nullable_to_string(self.type), self.exp.to_string())
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
-               and nullable_equals(self.type, other.type) and self.expression.equals(other.expression)
+               and nullable_equals(self.type, other.type) and self.exp.equals(other.exp)
 
     def evaluate(self, env):
-        value = self.expression.evaluate(env)
+        value = self.exp.evaluate(env)
         # TODO type-check
         env.set_current_level(self.name, value)
 
 
 class FunctionParameter(Declaration):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, name, type=None):
         Declaration.__init__(self, name)
@@ -634,7 +626,7 @@ class FunctionParameter(Declaration):
 
 
 class FunctionDeclaration(Declaration):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, name, parameters, return_type, body):
         Declaration.__init__(self, name)
@@ -664,7 +656,7 @@ class FunctionDeclaration(Declaration):
 
 
 class NativeFunctionDeclaration(Declaration):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, name, parameters=None, return_type=None, function=None):
         Declaration.__init__(self, name)
@@ -686,7 +678,7 @@ class NativeFunctionDeclaration(Declaration):
 
 
 class ArrayType(Type):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, element_type):
         self.type_name = element_type
@@ -699,7 +691,7 @@ class ArrayType(Type):
 
 
 class RecordType(Type):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, field_types):
         # assert (isinstance(field_types, dict))
@@ -711,7 +703,7 @@ class RecordType(Type):
             index += 1
 
     def to_string(self):
-        _immutable_fields_ = ALL_FIELDS
+        _immutable_ = True
         return '%s(field_types=%s)' % (self.__class__.__name__, dict_to_string(self.field_types))
 
     def equals(self, other):
@@ -719,7 +711,7 @@ class RecordType(Type):
 
 
 class Sequence(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, expressions):
         self.expressions = expressions
@@ -738,7 +730,7 @@ class Sequence(Exp):
 
 
 class BinaryOperation(Exp):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def __init__(self, left, right):
         self.left = left
@@ -768,7 +760,7 @@ class BinaryOperation(Exp):
 
 
 class Multiply(BinaryOperation):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -776,7 +768,7 @@ class Multiply(BinaryOperation):
 
 
 class Divide(BinaryOperation):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -784,7 +776,7 @@ class Divide(BinaryOperation):
 
 
 class Add(BinaryOperation):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -792,7 +784,7 @@ class Add(BinaryOperation):
 
 
 class Subtract(BinaryOperation):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -800,7 +792,7 @@ class Subtract(BinaryOperation):
 
 
 class GreaterThanOrEquals(BinaryOperation):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -808,7 +800,7 @@ class GreaterThanOrEquals(BinaryOperation):
 
 
 class LessThanOrEquals(BinaryOperation):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -816,7 +808,7 @@ class LessThanOrEquals(BinaryOperation):
 
 
 class Equals(BinaryOperation):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         (left, right) = self.evaluate_sides_to_value(env)
@@ -824,7 +816,7 @@ class Equals(BinaryOperation):
 
 
 class NotEquals(BinaryOperation):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         (left, right) = self.evaluate_sides_to_value(env)
@@ -832,7 +824,7 @@ class NotEquals(BinaryOperation):
 
 
 class GreaterThan(BinaryOperation):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -840,7 +832,7 @@ class GreaterThan(BinaryOperation):
 
 
 class LessThan(BinaryOperation):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -848,7 +840,7 @@ class LessThan(BinaryOperation):
 
 
 class And(BinaryOperation):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -856,7 +848,7 @@ class And(BinaryOperation):
 
 
 class Or(BinaryOperation):
-    _immutable_fields_ = ALL_FIELDS
+    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)

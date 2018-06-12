@@ -91,7 +91,7 @@ class Parser:
         assert isinstance(lvalue, LValue)
         type = lvalue.name
         assert isinstance(lvalue.next, ArrayLValue)
-        exp1 = lvalue.next.expression
+        exp1 = lvalue.next.exp
         exp2 = self.expression()
         return ArrayCreation(TypeId(type), exp1, exp2)
 

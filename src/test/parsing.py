@@ -34,6 +34,9 @@ class TestParsing(unittest.TestCase):
     def test_record_creation(self):
         self.assertParsesTo('A{b = 42, c = d}', RecordCreation(TypeId('A'), {'b': IntegerValue(42), 'c': LValue('d')}))
 
+    def test_object_creation(self):
+        self.assertParsesTo('new X', ObjectCreation(TypeId('X')))
+
     def test_lvalue_plain(self):
         self.assertParsesTo('x', LValue('x'))
 
@@ -169,22 +172,18 @@ class TestParsing(unittest.TestCase):
              VariableDeclaration('buffer', None, FunctionCall('getchar', arguments=[])),
              FunctionDeclaration('readint', [FunctionParameter('any', TypeId('any'))], TypeId('int'), Let(
                  declarations=[VariableDeclaration('i', None, IntegerValue(0)),
-                               FunctionDeclaration('isdigit', [FunctionParameter('s', TypeId('string'))], TypeId('int'),
-                                                   And(
-                                                       GreaterThanOrEquals(
-                                                           FunctionCall('ord', arguments=[LValue('buffer', None)]),
-                                                           FunctionCall('ord', arguments=[StringValue('0')])),
-                                                       LessThanOrEquals(
-                                                           FunctionCall('ord', arguments=[LValue('buffer', None)]),
-                                                           FunctionCall('ord', arguments=[StringValue('9')])))),
+                               FunctionDeclaration('isdigit', [FunctionParameter('s', TypeId('string'))], TypeId('int'), And(
+                                   GreaterThanOrEquals(FunctionCall('ord', arguments=[LValue('buffer', None)]),
+                                                       FunctionCall('ord', arguments=[StringValue('0')])),
+                                   LessThanOrEquals(FunctionCall('ord', arguments=[LValue('buffer', None)]),
+                                                    FunctionCall('ord', arguments=[StringValue('9')])))),
                                FunctionDeclaration('skipto', [], None, While(
                                    Or(Equals(LValue('buffer', None), StringValue(" ")),
                                       Equals(LValue('buffer', None), StringValue("\n"))),
                                    Assign(LValue('buffer', None), FunctionCall('getchar', arguments=[]))))],
                  expressions=[FunctionCall('skipto', arguments=[]), Assign(LValue('any', RecordLValue('any', None)),
                                                                            FunctionCall('isdigit',
-                                                                                        arguments=[
-                                                                                            LValue('buffer', None)])),
+                                                                                        arguments=[LValue('buffer', None)])),
                               While(FunctionCall('isdigit', arguments=[LValue('buffer', None)]), Sequence(expressions=[
                                   Assign(LValue('i', None), Add(Multiply(LValue('i', None), IntegerValue(10)), Subtract(
                                       FunctionCall('ord', arguments=[LValue('buffer', None)]),
@@ -193,8 +192,7 @@ class TestParsing(unittest.TestCase):
                               LValue('i', None)])),
              TypeDeclaration('list', RecordType({'first': TypeId('int'), 'rest': TypeId('list')}))], expressions=[
                 FunctionCall('printlist',
-                             arguments=[
-                                 FunctionCall('merge', arguments=[LValue('list1', None), LValue('list2', None)])])])
+                             arguments=[FunctionCall('merge', arguments=[LValue('list1', None), LValue('list2', None)])])])
 
         self.assertParsesTo(merge_snippet, expected)
 
@@ -228,9 +226,7 @@ class TestParsing(unittest.TestCase):
 
     def test_break(self):
         self.assertParsesTo('for i := 1 to 9 do if i > 5 then break else print(i)',
-                            For('i', IntegerValue(1), IntegerValue(9),
-                                If(GreaterThan(LValue('i'), IntegerValue(5)), Break(),
-                                   FunctionCall('print', [LValue('i')]))))
+                            For('i', IntegerValue(1), IntegerValue(9), If(GreaterThan(LValue('i'), IntegerValue(5)), Break(), FunctionCall('print', [LValue('i')]))))
 
 
 if __name__ == '__main__':
