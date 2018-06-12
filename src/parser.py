@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
 from src.ast import NilValue, IntegerValue, StringValue, ArrayCreation, TypeId, RecordCreation, LValue, \
-    ObjectCreation, FunctionCall, RecordLValue, ArrayLValue, Assign, If, While, For, Break, Let, \
+    FunctionCall, RecordLValue, ArrayLValue, Assign, If, While, For, Break, Let, \
     TypeDeclaration, ArrayType, VariableDeclaration, FunctionDeclaration, RecordType, Sequence, Multiply, Divide, Add, \
     Subtract, GreaterThanOrEquals, LessThanOrEquals, Equals, NotEquals, GreaterThan, LessThan, \
     And, Or, FunctionParameter
@@ -13,11 +13,11 @@ class ParseError(Exception):
     def __init__(self, reason, token):
         self.reason = reason
         self.token = token
-    
+
     def to_string(self):
         return self.reason + " at token " + self.token.to_string()
         # TODO sub-class from RPythonizedObject?
-    
+
     def __str__(self):
         return self.to_string()
 
@@ -169,8 +169,6 @@ class Parser:
             return self.sequence()
         elif self.__accept_type(IdentifierToken):
             return self.id_started()
-        elif self.__accept(KeywordToken('new')):
-            return self.object()
         elif self.__accept(KeywordToken('if')):
             return self.if_then()
         elif self.__accept(KeywordToken('while')):
@@ -291,11 +289,6 @@ class Parser:
             return self.array_from_lvalue(lvalue)
         else:
             return lvalue
-
-    def object(self):
-        self.__expect(KeywordToken('new'))
-        type_id = self.__expect_type(IdentifierToken)
-        return ObjectCreation(TypeId(type_id.value))
 
     def operation(self, operation, left, right):
         operator_class = OPERATORS[operation]

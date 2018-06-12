@@ -31,7 +31,7 @@ bin/tiger-interpreter-no-jit: src/main/tiger-interpreter.py src/main/util.py $(s
 	PYTHONPATH=. python ${RPYTHON} --log --opt=3 --output=$@ $<
 
 
-benchmarks:
+benchmarks: binaries
 	$(foreach program, $(shell find src/benchmark/*.tig), ./src/benchmark/benchmark.sh $(program);)
 
 
