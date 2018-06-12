@@ -1,5 +1,6 @@
 from src.environment import Environment
-from src.rpythonized_object import RPythonizedObject
+from src.rpythonized_object import RPythonizedObject, list_equals, dict_equals, nullable_equals, list_to_string, \
+    dict_to_string, nullable_to_string
 
 # Begin RPython setup; catch import errors so this can still run in CPython...
 try:
@@ -33,11 +34,11 @@ except ImportError:
         return False
 
 
-def get_location(code):
+def get_location(code, exp, env):
     return "%s" % code.to_string()
 
 
-jitdriver = JitDriver(greens=['code'], reds='auto', get_printable_location=get_location)
+jitdriver = JitDriver(greens=['code', 'expression', 'environment'], reds='auto', get_printable_location=get_location)
 
 
 def jitpolicy(driver):
@@ -48,10 +49,16 @@ def jitpolicy(driver):
         raise NotImplemented("Abandon if we are unable to use RPython's JitPolicy")
 
 
-# TODO inline
 def loop(code, expression, environment):
-    jitdriver.jit_merge_point(code=code)
+    jitdriver.jit_merge_point(code=code, expression=expression, environment=environment)
     return expression.evaluate(environment)
+
+
+try:
+    from rpython.rlib.objectmodel import import_from_mixin
+except ImportError:
+    def import_from_mixin(M, special_methods=['__init__', '__del__']):
+        pass
 
 
 # end of RPython setup
@@ -69,6 +76,8 @@ class InterpretationError(Exception):
 
 
 class Program(RPythonizedObject):
+    _immutable_ = True
+
     def evaluate(self, env):
         pass
         # TODO implement in sub-classes
@@ -78,61 +87,14 @@ class Program(RPythonizedObject):
         # TODO implement in sub-classes
 
 
-def list_equals(list1, list2):
-    """Helper function for comparing two iterable sequences of expressions using .equals()"""
-    if len(list1) != len(list2):
-        return False
-    else:
-        for i in range(len(list1)):
-            if not list1[i].equals(list2[i]):
-                print("not equal: %s" % list1[i].to_string())
-                return False
-    return True
-
-
-def dict_equals(dict1, dict2):
-    """Helper function for comparing two iterable sequences of expressions using .equals()"""
-    if len(dict1) != len(dict2):
-        return False
-    else:
-        for i in dict1:
-            if not dict1[i].equals(dict2[i]):
-                return False
-    return True
-
-
-def nullable_equals(obj1, obj2):
-    if obj1 is None and obj2 is None:
-        return True
-    elif obj1 is not None and obj2 is not None:
-        return obj1.equals(obj2)
-    else:
-        return False
-
-
-def list_to_string(list):
-    stringified = []
-    for item in list:
-        stringified.append(item.to_string())
-    return '[%s]' % (', '.join(stringified))
-
-
-def dict_to_string(dict):
-    stringified = []
-    for key in dict:
-        stringified.append(key + '=' + dict[key].to_string())
-    return '{%s}' % (', '.join(stringified))
-
-
-def nullable_to_string(obj):
-    return obj.to_string() if obj is not None else 'None'
-
-
 class Exp(Program):
+    _immutable_ = True
     pass
 
 
 class Declaration(Program):
+    _immutable_ = True
+
     def __init__(self, name):
         self.name = name
 
@@ -141,10 +103,14 @@ class Declaration(Program):
 
 
 class Type(Program):
+    _immutable_ = True
+
     pass
 
 
 class Value(Exp):
+    _immutable_ = True
+
     def __init__(self):
         pass
 
@@ -159,6 +125,8 @@ class Value(Exp):
 
 
 class NilValue(Value):
+    _immutable_ = True
+
     def __init__(self):
         Value.__init__(self)
 
@@ -170,6 +138,8 @@ class NilValue(Value):
 
 
 class IntegerValue(Value):
+    _immutable_ = True
+
     def __init__(self, value):
         Value.__init__(self)
         assert isinstance(value, int)
@@ -191,6 +161,8 @@ class IntegerValue(Value):
 
 
 class StringValue(Value):
+    _immutable_ = True
+
     def __init__(self, value):
         Value.__init__(self)
         self.string = value
@@ -206,6 +178,8 @@ class StringValue(Value):
 
 
 class ArrayCreation(Exp):
+    _immutable_ = True
+
     def __init__(self, type, length, initial_value):
         assert (isinstance(length, Exp))
         self.length_expression = length
@@ -235,6 +209,8 @@ class ArrayCreation(Exp):
 
 
 class ArrayValue(Value):
+    _immutable_ = True
+
     def __init__(self, length=0, initial_value=None):
         Value.__init__(self)
         self.length = length
@@ -250,6 +226,8 @@ class ArrayValue(Value):
 
 
 class RecordCreation(Exp):
+    _immutable_ = True
+
     def __init__(self, type, fields):
         assert (isinstance(type, TypeId))
         self.type_id = type
@@ -278,6 +256,8 @@ class RecordCreation(Exp):
 
 
 class RecordValue(Value):
+    _immutable_ = True
+
     def __init__(self, type, values=None):
         Value.__init__(self)
         assert (isinstance(type, RecordType))
@@ -293,18 +273,9 @@ class RecordValue(Value):
                                                                                                       other.values)
 
 
-class ObjectCreation(Exp):
-    def __init__(self, type):
-        self.type = type
-
-    def to_string(self):
-        return '%s(type=%s)' % (self.__class__.__name__, self.type.to_string())
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.type.equals(other.type)
-
-
 class TypeId(Declaration):
+    _immutable_ = True
+
     def __init__(self, name):
         Declaration.__init__(self, name)
 
@@ -316,6 +287,8 @@ class TypeId(Declaration):
 
 
 class LValue(Exp):
+    _immutable_ = True
+
     def __init__(self, name, next=None):
         self.name = name
         self.next = next
@@ -356,10 +329,13 @@ class LValue(Exp):
 
 
 class RecordLValue(LValue):
+    _immutable_ = True
     pass
 
 
 class ArrayLValue(LValue):
+    _immutable_ = True
+
     def __init__(self, exp, next=None):
         LValue.__init__(self, None, next)
         self.exp = exp
@@ -374,6 +350,8 @@ class ArrayLValue(LValue):
 
 
 class FunctionCall(Exp):
+    _immutable_ = True
+
     def __init__(self, name, arguments):
         self.name = name
         assert (isinstance(arguments, list))
@@ -429,23 +407,9 @@ class FunctionCall(Exp):
         return result
 
 
-class MethodCall(Exp):
-    # TODO remove
-    def __init__(self, instance, name, args):
-        self.instance = instance
-        self.name = name
-        self.args = args
-
-    def to_string(self):
-        return '%s(instance=%s, name=%s, args=%s)' % (
-            self.__class__.__name__, self.instance, self.name, list_to_string(self.args))
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.instance.equals(other.instance) and self.name.equals(
-            other.name) and list_equals(self.args, other.args)
-
-
 class Assign(Exp):
+    _immutable_ = True
+
     def __init__(self, lvalue, expression):
         self.lvalue = lvalue
         self.expression = expression
@@ -464,6 +428,8 @@ class Assign(Exp):
 
 
 class If(Exp):
+    _immutable_ = True
+
     def __init__(self, condition, body_if_true, body_if_false=None):
         self.condition = condition
         self.body_if_true = body_if_true
@@ -491,6 +457,8 @@ class If(Exp):
 
 
 class While(Exp):
+    _immutable_ = True
+
     def __init__(self, condition, body):
         self.condition = condition
         self.body = body
@@ -519,6 +487,8 @@ class While(Exp):
 
 
 class For(Exp):
+    _immutable_ = True
+
     def __init__(self, var, start, end, body):
         self.var = var
         self.start = start
@@ -554,6 +524,8 @@ class For(Exp):
 
 
 class Break(Exp):
+    _immutable_ = True
+
     def evaluate(self, env):
         raise BreakException()
 
@@ -563,6 +535,8 @@ class BreakException(Exception):
 
 
 class Let(Exp):
+    _immutable_ = True
+
     def __init__(self, declarations, expressions):
         self.declarations = declarations
         self.expressions = expressions
@@ -595,6 +569,8 @@ class Let(Exp):
 
 
 class TypeDeclaration(Declaration):
+    _immutable_ = True
+
     def __init__(self, name, type):
         Declaration.__init__(self, name)
         self.type = type
@@ -610,6 +586,8 @@ class TypeDeclaration(Declaration):
 
 
 class VariableDeclaration(Declaration):
+    _immutable_ = True
+
     def __init__(self, name, type, exp):
         Declaration.__init__(self, name)
         self.type = type
@@ -630,6 +608,8 @@ class VariableDeclaration(Declaration):
 
 
 class FunctionParameter(Declaration):
+    _immutable_ = True
+
     def __init__(self, name, type=None):
         Declaration.__init__(self, name)
         self.name = name
@@ -645,6 +625,8 @@ class FunctionParameter(Declaration):
 
 
 class FunctionDeclaration(Declaration):
+    _immutable_ = True
+
     def __init__(self, name, parameters, return_type, body):
         Declaration.__init__(self, name)
         assert isinstance(parameters, list)
@@ -673,6 +655,8 @@ class FunctionDeclaration(Declaration):
 
 
 class NativeFunctionDeclaration(Declaration):
+    _immutable_ = True
+
     def __init__(self, name, parameters=None, return_type=None, function=None):
         Declaration.__init__(self, name)
         self.parameters = parameters or []
@@ -693,6 +677,8 @@ class NativeFunctionDeclaration(Declaration):
 
 
 class ArrayType(Type):
+    _immutable_ = True
+
     def __init__(self, element_type):
         self.type_name = element_type
 
@@ -704,6 +690,8 @@ class ArrayType(Type):
 
 
 class RecordType(Type):
+    _immutable_ = True
+
     def __init__(self, field_types):
         # assert (isinstance(field_types, dict))
         self.field_types = field_types
@@ -714,6 +702,7 @@ class RecordType(Type):
             index += 1
 
     def to_string(self):
+        _immutable_ = True
         return '%s(field_types=%s)' % (self.__class__.__name__, dict_to_string(self.field_types))
 
     def equals(self, other):
@@ -721,6 +710,8 @@ class RecordType(Type):
 
 
 class Sequence(Exp):
+    _immutable_ = True
+
     def __init__(self, expressions):
         self.expressions = expressions
 
@@ -738,6 +729,8 @@ class Sequence(Exp):
 
 
 class BinaryOperation(Exp):
+    _immutable_ = True
+
     def __init__(self, left, right):
         self.left = left
         self.right = right
@@ -766,72 +759,96 @@ class BinaryOperation(Exp):
 
 
 class Multiply(BinaryOperation):
+    _immutable_ = True
+
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int * right_int)
 
 
 class Divide(BinaryOperation):
+    _immutable_ = True
+
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int // right_int)
 
 
 class Add(BinaryOperation):
+    _immutable_ = True
+
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int + right_int)
 
 
 class Subtract(BinaryOperation):
+    _immutable_ = True
+
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int - right_int)
 
 
 class GreaterThanOrEquals(BinaryOperation):
+    _immutable_ = True
+
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int >= right_int else IntegerValue(0)
 
 
 class LessThanOrEquals(BinaryOperation):
+    _immutable_ = True
+
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int <= right_int else IntegerValue(0)
 
 
 class Equals(BinaryOperation):
+    _immutable_ = True
+
     def evaluate(self, env):
         (left, right) = self.evaluate_sides_to_value(env)
         return IntegerValue(1) if left.equals(right) else IntegerValue(0)
 
 
 class NotEquals(BinaryOperation):
+    _immutable_ = True
+
     def evaluate(self, env):
         (left, right) = self.evaluate_sides_to_value(env)
         return IntegerValue(1) if not left.equals(right) else IntegerValue(0)
 
 
 class GreaterThan(BinaryOperation):
+    _immutable_ = True
+
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int > right_int else IntegerValue(0)
 
 
 class LessThan(BinaryOperation):
+    _immutable_ = True
+
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int < right_int else IntegerValue(0)
 
 
 class And(BinaryOperation):
+    _immutable_ = True
+
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int and right_int else IntegerValue(0)
 
 
 class Or(BinaryOperation):
+    _immutable_ = True
+
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int or right_int else IntegerValue(0)

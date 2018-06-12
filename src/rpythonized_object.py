@@ -14,3 +14,57 @@ class RPythonizedObject:
 
     def __eq__(self, other):
         return self.equals(other)
+
+
+def list_equals(list1, list2):
+    """Helper function for comparing two iterable sequences of expressions using .equals()"""
+    if len(list1) != len(list2):
+        return False
+    else:
+        for i in range(len(list1)):
+            if not list1[i].equals(list2[i]):
+                print("not equal: %s" % list1[i].to_string())
+                return False
+    return True
+
+
+def dict_equals(dict1, dict2):
+    """Helper function for comparing two iterable sequences of expressions using .equals()"""
+    if len(dict1) != len(dict2):
+        return False
+    else:
+        for i in dict1:
+            if not dict1[i].equals(dict2[i]):
+                return False
+    return True
+
+
+def nullable_equals(obj1, obj2):
+    if obj1 is None and obj2 is None:
+        return True
+    elif obj1 is not None and obj2 is not None:
+        return obj1.equals(obj2)
+    else:
+        return False
+
+
+def list_to_string(list):
+    stringified = []
+    for item in list:
+        stringified.append(item.to_string())
+    return '[%s]' % (', '.join(stringified))
+
+
+def dict_to_string(dict):
+    stringified = []
+    for key in dict:
+        stringified.append(key + '=' + dict[key].to_string())
+    return '{%s}' % (', '.join(stringified))
+
+
+def nullable_to_string(obj):
+    return obj.to_string() if obj is not None else 'None'
+
+
+class Immutable:
+    _immutable_ = True

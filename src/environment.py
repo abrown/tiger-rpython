@@ -1,7 +1,42 @@
+# Begin RPython setup; catch import errors so this can still run in CPython...
+try:
+    from rpython.rlib.jit import JitDriver, elidable, promote, unroll_safe, jit_debug, we_are_jitted
+except ImportError:
+    class JitDriver(object):
+        def __init__(self, **kw): pass
+
+        def jit_merge_point(self, **kw): pass
+
+        def can_enter_jit(self, **kw): pass
+
+
+    def elidable(func):
+        return func
+
+
+    def promote(x):
+        return x
+
+
+    def unroll_safe(func):
+        return func
+
+
+    def jit_debug(string, arg1=0, arg2=0, arg3=0, arg4=0):
+        pass
+
+
+    def we_are_jitted():
+        return False
+
+
+# end of RPython setup
+
 class EnvironmentLevel:
     """
     Contains the name bindings at a given level
     """
+    _immutable_ = True
 
     def __init__(self):
         self.bindings = {}  # map of names to indices
@@ -17,6 +52,7 @@ class Environment:
     Each level contains a dictionary of names to expression index (diff. from level index) and a list of indexed expressions.
     To find a name (see __locate__), inspect each dictionary at each level until the name is found and return the level and its expression index
     """
+    _immutable_ = True
 
     # TODO specialize get/set/etc. on stack passed
     def __init__(self, stack=None, type_stack=None):
@@ -124,6 +160,7 @@ class Environment:
         return [new_level]
 
     # TODO make elidable only if we can guarantee that push/pop have not changed
+    @elidable
     def __locate__(self, name, stack):
         expression_index = -1
         level_index = len(stack) - 1
