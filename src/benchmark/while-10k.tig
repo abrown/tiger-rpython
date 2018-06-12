@@ -1,0 +1,6 @@
+let
+  var i : int := 0
+in
+  (while i < 10000 do i := i + 1;
+  i)
+end

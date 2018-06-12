@@ -28,6 +28,16 @@ make binaries
 ```
 
 
+### Use
+
+For ease of testing, the project builds two RPython-translated binaries in the `bin` directory:
+
+ - `tiger-parser [program.tig]` parses a Tiger program and prints its AST; it returns code `40` when it cannot find the
+  Tiger program file, code `42` if the Tiger program is unparseable, and `0` otherwise
+ - `tiger-interpreter [program.tig]` parses a Tiger program, evaluates it to a value, and prints this value (if the
+ program returns a value at all); it returns similar codes to `tiger-parser`
+
+
 
 ### Test
 

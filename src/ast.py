@@ -48,6 +48,12 @@ def jitpolicy(driver):
         raise NotImplemented("Abandon if we are unable to use RPython's JitPolicy")
 
 
+# TODO inline
+def loop(code, expression, environment):
+    jitdriver.jit_merge_point(code=code)
+    return expression.evaluate(environment)
+
+
 # end of RPython setup
 
 
@@ -500,14 +506,15 @@ class While(Exp):
     def evaluate(self, env):
         condition_value = self.condition.evaluate(env)
         assert isinstance(condition_value, IntegerValue)
+
         result = None
         while condition_value.integer != 0:
             try:
-                result = self.body.evaluate(env)
+                result = loop(self, self.body, env)
             except BreakException:
                 break
             condition_value = self.condition.evaluate(env)
-            # TODO jitdriver.jit_merge_point(code=self)
+
         return result
 
 
@@ -538,11 +545,10 @@ class For(Exp):
             iterator.integer = i
             env.set_current_level(self.var, iterator)
             try:
-                result = self.body.evaluate(env)
+                result = loop(self, self.body, env)
                 assert result is None
             except BreakException:
                 break
-            jitdriver.jit_merge_point(code=self)
 
         env.pop()
 
