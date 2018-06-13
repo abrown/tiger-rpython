@@ -17,11 +17,11 @@ Pre-requisites: _git_, _make_, _Python 2.7_.
 ```bash
 # clone the PyPy repository and verify that the RPython translator works (this project used revision 33f417d9c3f73dadb61346aa1b2579a1bf947ee9 but any recent version should do)
 git clone https://github.com/mozillazg/pypy
-pypy/rpython/bin/rpython --help
+python pypy/rpython/bin/rpython --help
 
 # clone the tiger-rpython repository (note: currently the Makefile expects the pypy directory to be in the parent directory)
-git clone https://github.com/abrown/tiger-python
-cd tiger-python
+git clone https://github.com/abrown/tiger-rpython
+cd tiger-rpython
 
 # build 'tiger-parser' and 'tiger-interpreter' under the 'bin' directory
 make binaries
@@ -73,7 +73,7 @@ make integration-test
 ```
 
 
-### Features:
+### Features
 
 This list describes which Tiger language features implemented (and which not):
 
