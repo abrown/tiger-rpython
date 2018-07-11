@@ -23,6 +23,10 @@ python pypy/rpython/bin/rpython --help
 git clone https://github.com/abrown/tiger-rpython
 cd tiger-rpython
 
+# create a Python virtual environment with necessary libraries
+make venv
+source venv/bin/activate
+
 # build 'tiger-parser' and 'tiger-interpreter' under the 'bin' directory
 make binaries
 ```
@@ -85,3 +89,16 @@ This list describes which Tiger language features implemented (and which not):
  - Allows creation of arrays and records and referencing them with lvalues
  - No type-checking of values (yet)
  
+
+
+### References
+
+Some helpful documents explaining RPython:
+
+ - Summary of the RPython architecture (e.g. the translation toolchain `flowspace` -> `annotator` -> `rtyper` and the 
+ meta-interpreter in `jit`): http://doc.pypy.org/en/latest/architecture.html
+ - JIT compiler architecture, including off-line partial evaluation principles (translation time vs compile time vs 
+ runtime), distinction of green vs red (green are known at compile time, red are not known until runtime), and promotion
+ (stop compilation until the runtime reaches this point): https://bitbucket.org/pypy/extradoc/raw/tip/eu-report/D08.2_JIT_Compiler_Architecture-2007-05-01.pdf
+ - In-depth PyPy description, including flow space, annotation model: https://bitbucket.org/pypy/extradoc/raw/tip/eu-report/D05.1_Publish_on_translating_a_very-high-level_description.pdf
+ - Using RPython interactively (e.g. displaying the flow graph): http://rpython.readthedocs.io/en/latest/getting-started.html
