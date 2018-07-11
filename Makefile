@@ -1,3 +1,4 @@
+PYPY=../pypy
 RPYTHON=../pypy/rpython/bin/rpython
 VERSION=0.1
 
@@ -37,6 +38,13 @@ bin/tiger-interpreter-no-jit: src/main/tiger_interpreter.py src/main/util.py $(s
 benchmarks: binaries
 	$(foreach program, $(shell find src/benchmark/*.tig), ./src/benchmark/benchmark.sh $(program);)
 PHONY: benchmarks
+
+venv:
+	python -m virtualenv --python=/usr/bin/python2.7 venv
+	source venv/bin/activate && pip install -r requirements.txt
+	ln -s $(shell realpath ${PYPY}/rpython) venv/lib/python2.7/site-packages/
+	ln -s $(shell realpath ${PYPY}/dotviewer) venv/lib/python2.7/site-packages/
+	ln -s $(shell realpath ${PYPY}/py) venv/lib/python2.7/site-packages/
 
 clean: clean-pyc
 	rm -f *.log

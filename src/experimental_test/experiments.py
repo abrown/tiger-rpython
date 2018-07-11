@@ -1,7 +1,4 @@
-import sys
 import unittest
-
-sys.path.append('../../../pypy')
 
 from rpython.translator.interactive import Translation
 from rpython.rtyper.llinterp import LLInterpreter
