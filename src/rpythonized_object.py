@@ -15,6 +15,9 @@ class RPythonizedObject:
     def __eq__(self, other):
         return self.equals(other)
 
+    def __ne__(self, other):
+        return not self.equals(other)
+
 
 def list_equals(list1, list2):
     """Helper function for comparing two iterable sequences of expressions using .equals()"""

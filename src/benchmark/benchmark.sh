@@ -7,9 +7,7 @@ export PYTHONPATH=.
 export PYPYLOG=jit:var/$(basename $1).log
 
 function run() {
-    #VALUE=$(/usr/bin/time $1 $2 2>&1)
     eval "$((/usr/bin/time $1 $2) 2> >(STDERR=$(cat); typeset -p STDERR) > >(STDOUT=$(cat); typeset -p STDOUT))"
-    #TIME=eval "${ { VALUE=$(/usr/bin/time $1 $2); } 2>&1; }"
     CODE=$?
 
     echo "$1 $TIGER_PROGRAM"
@@ -18,6 +16,6 @@ function run() {
     echo -e "\tValue: ${STDOUT}\n"
 }
 
-run "python src/main/tiger-interpreter.py" ${TIGER_PROGRAM}
+run "python src/main/tiger_interpreter.py" ${TIGER_PROGRAM}
 run "bin/tiger-interpreter-no-jit" ${TIGER_PROGRAM}
 run "bin/tiger-interpreter" ${TIGER_PROGRAM}
