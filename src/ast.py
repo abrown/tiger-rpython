@@ -509,8 +509,8 @@ class For(Exp):
         assert isinstance(start_value, IntegerValue)
         end_value = self.end.evaluate(env)
         assert isinstance(end_value, IntegerValue)
-        iterator = start_value
 
+        iterator = IntegerValue(start_value.integer)
         for i in range(iterator.integer, end_value.integer + 1):
             iterator.integer = i
             env.set_current_level(self.var, iterator)
@@ -657,13 +657,13 @@ class FunctionDeclaration(Declaration):
 class NativeFunctionDeclaration(Declaration):
     _immutable_ = True
 
-    def __init__(self, name, parameters=None, return_type=None, function=None):
+    def __init__(self, name, parameters=None, return_type=None, function_=None):
         Declaration.__init__(self, name)
         self.parameters = parameters or []
         assert isinstance(self.parameters, list)
         assert isinstance(return_type, TypeId) or return_type is None
         self.return_type = return_type
-        self.function = function
+        self.function = function_
         self.environment = Environment()  # native functions cannot touch the interpreter environment
 
     def to_string(self):
