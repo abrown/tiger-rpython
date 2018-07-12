@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export PYTHONPATH=.
-python_value=$(python src/main/tiger-parser.py $1 2>&1)
+python_value=$(python src/main/tiger_parser.py $1 2>&1)
 python_code=$?
 
 rpython_value=$(bin/tiger-parser $1 2>&1)

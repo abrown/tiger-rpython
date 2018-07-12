@@ -1,0 +1,1 @@
+let var a := 0 in (for i := 1 to 99999 do a := a + i; a) end

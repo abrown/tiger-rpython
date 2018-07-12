@@ -45,6 +45,8 @@ venv:
 	ln -s $(shell realpath ${PYPY}/rpython) venv/lib/python2.7/site-packages/
 	ln -s $(shell realpath ${PYPY}/dotviewer) venv/lib/python2.7/site-packages/
 	ln -s $(shell realpath ${PYPY}/py) venv/lib/python2.7/site-packages/
+	ln -s $(shell realpath ${PYPY}/_pytest) venv/lib/python2.7/site-packages/
+	ln -s $(shell realpath ${PYPY}/pytest.py) venv/lib/python2.7/site-packages/
 
 clean: clean-pyc
 	rm -f *.log
