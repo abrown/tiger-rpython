@@ -301,6 +301,7 @@ class LValue(Exp):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and nullable_equals(self.next, other.next)
 
+    @unroll_safe
     def evaluate(self, env):
         lvalue = self
 
@@ -415,7 +416,7 @@ class Assign(Exp):
         self.expression = expression
 
     def to_string(self):
-        return '%s(lvalue=%s, exp=%s)' % (self.__class__.__name__, self.lvalue.to_string(), self.expression.to_string())
+        return '%s(lvalue=%s, expression=%s)' % (self.__class__.__name__, self.lvalue.to_string(), self.expression.to_string())
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.expression.equals(
