@@ -32,6 +32,12 @@ except ImportError:
 
 # end of RPython setup
 
+
+class Cloneable:
+    def clone(self):
+        return self
+
+
 class EnvironmentLevel:
     """
     Contains the name bindings at a given level
@@ -46,7 +52,7 @@ class EnvironmentLevel:
         return '%s => %s' % (self.bindings, self.expressions)
 
 
-class Environment:
+class Environment(Cloneable):
     """
     Holds a stack of EnvironmentLevels and a level index to the current one; push() and pop() modify this stack and index.
     Each level contains a dictionary of names to expression index (diff. from level index) and a list of indexed expressions.

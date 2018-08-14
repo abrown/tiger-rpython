@@ -1,4 +1,4 @@
-from src.environment import Environment
+from src.environment import Environment, Cloneable
 from src.rpythonized_object import RPythonizedObject, list_equals, dict_equals, nullable_equals, list_to_string, \
     dict_to_string, nullable_to_string
 
@@ -204,7 +204,8 @@ class ArrayCreation(Exp):
         initial_value = self.initial_value_expression.evaluate(env)
         assert (isinstance(initial_value, Value))
         # TODO type-check
-        type = env.get(self.type_id.name, env.type_stack)
+        # type = env.get(self.type_id.name, env.type_stack)
+        type = env.get(self.type_id.name)
         return ArrayValue(length.integer, initial_value)
 
 
@@ -243,7 +244,8 @@ class RecordCreation(Exp):
                and dict_equals(self.fields, other.fields)
 
     def evaluate(self, env):
-        type = env.get(self.type_id.name, env.type_stack)
+        # type = env.get(self.type_id.name, env.type_stack)
+        type = env.get(self.type_id.name)
         assert (isinstance(type, RecordType))
         values = [None] * len(type.field_types)
         index = 0
@@ -416,7 +418,8 @@ class Assign(Exp):
         self.expression = expression
 
     def to_string(self):
-        return '%s(lvalue=%s, expression=%s)' % (self.__class__.__name__, self.lvalue.to_string(), self.expression.to_string())
+        return '%s(lvalue=%s, expression=%s)' % (
+            self.__class__.__name__, self.lvalue.to_string(), self.expression.to_string())
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.expression.equals(
@@ -552,7 +555,7 @@ class Let(Exp):
                and list_equals(self.expressions, other.expressions)
 
     def evaluate(self, env):
-        if not isinstance(env, Environment):
+        if not env:  # not isinstance(env, Environment):
             raise InterpretationError('No environment in %s' % self.to_string())
 
         env.push()
@@ -583,7 +586,8 @@ class TypeDeclaration(Declaration):
         return RPythonizedObject.equals(self, other) and self.name == other.name and self.type.equals(other.type)
 
     def evaluate(self, env):
-        env.set_current_level(self.name, self.type, env.type_stack)
+        # env.set_current_level(self.name, self.type, env.type_stack)
+        env.set_current_level(self.name, self.type)
 
 
 class VariableDeclaration(Declaration):
@@ -636,7 +640,7 @@ class FunctionDeclaration(Declaration):
         self.return_type = return_type
         assert isinstance(body, Exp)
         self.body = body
-        self.environment = Environment()  # to be reset when the function declaration is evaluated
+        self.environment = Cloneable()  # Environment()  # to be reset when the function declaration is evaluated
 
     def to_string(self):
         return '%s(name=%s, parameters=%s, return_type=%s, body=%s)' % (
@@ -675,7 +679,6 @@ class NativeFunctionDeclaration(Declaration):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and list_equals(self.parameters, other.parameters) \
                and nullable_equals(self.return_type, other.return_type)
-
 
 class ArrayType(Type):
     _immutable_ = True

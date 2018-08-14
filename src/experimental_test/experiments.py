@@ -120,7 +120,6 @@ class TestExperiments(unittest.TestCase):
     def test_for_loop(self):
         def test():
             program = Parser("let var a := 0 in (for i := 1 to 9 do a := a - i; a) end").parse()
-            print program
             environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
             result = program.evaluate(environment)
             assert isinstance(result, IntegerValue)
@@ -292,6 +291,148 @@ class TestExperiments(unittest.TestCase):
         # the test will output many lines of 'bh: ...' logging at the end (see https://morepypy.blogspot.com/2010/06/blackhole-interpreter.html for more info)
         # this is due to the trace failing a guard at some point and the meta-interpreter invoking the blackhole interpreter to get out of jitcode-land
         # and the optimized trace is 73 operations long
+        self.assertEqual(self.meta_interpret(test, []), -45)
+
+    def test_virtualized_for_loop_changed_merge_point(self):
+        def get_location(code, exp, env):
+            return "%s" % code.to_string()
+
+        jitdriver = JitDriver(greens=['code', 'expression', 'environment'], reds='auto',
+                              get_printable_location=get_location)
+
+        class VirtualizedFor(For):
+            _immutable_ = True
+
+            def evaluate(self, env):
+                env.push()
+                start_value = self.start.evaluate(env)
+                assert isinstance(start_value, IntegerValue)
+                end_value = self.end.evaluate(env)
+                assert isinstance(end_value, IntegerValue)
+
+                iterator = IntegerValue(start_value.integer)
+                result = None
+                for i in range(iterator.integer, end_value.integer + 1):
+                    iterator.integer = i
+                    env.set_current_level(self.var, iterator)
+                    try:
+                        result = self.body.evaluate(env)
+                        assert result is None
+                    except BreakException:
+                        break
+                    # note the inline merge point, promotions have no effect
+                    jitdriver.jit_merge_point(code=self, expression=self.body, environment=env)
+
+                env.pop()
+
+        def test():
+            # adding this line creates more jitcodes in /tmp/usession-exploration-abrown/jitcodes which reduces the number of operations
+            Parser('let var a := 0 in a end').parse()
+
+            program = Let(declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
+                          expressions=[Sequence(
+                              expressions=[VirtualizedFor(var='i', start=IntegerValue(1), end=IntegerValue(9),
+                                                          body=Assign(lvalue=LValue(name='a', next=None),
+                                                                      expression=Subtract(
+                                                                          left=LValue(name='a', next=None),
+                                                                          right=LValue(name='i',
+                                                                                       next=None)))),
+                                           LValue(name='a', next=None)])])
+            environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
+            result = program.evaluate(environment)
+            assert isinstance(result, IntegerValue)
+            return result.integer
+
+        # the test will output many lines of 'bh: ...' logging at the end (see https://morepypy.blogspot.com/2010/06/blackhole-interpreter.html for more info)
+        # this is due to the trace failing a guard at some point and the meta-interpreter invoking the blackhole interpreter to get out of jitcode-land
+        # and the optimized trace is 73 operations long
+        self.assertEqual(self.meta_interpret(test, []), -45)
+
+    def test_for_loop_no_with_simple_environment(self):
+        class SimpleEnvironment(Cloneable):
+            _immutable_ = True
+
+            def __init__(self, names=None, values=None):
+                self.names = names or {}
+                self.values = values or []
+
+            @elidable
+            def __locate__(self, name):
+                if name not in self.names:
+                    index = len(self.names)
+                    self.names[name] = index
+                    if index >= len(self.values):
+                        self.values.append(None)
+                return self.names[name]
+
+            def push(self):
+                """Create a new environment level (i.e. frame)"""
+                pass
+
+            def pop(self):
+                """Remove and forget the topmost environment level (i.e. frame)"""
+                pass
+
+            @unroll_safe
+            def set(self, name, expression):
+                """
+                Set 'name' to 'expression'; if it exists in a prior level, modify it there; otherwise, add it to the current
+                level
+                """
+                index = self.__locate__(name)
+                num_values = len(self.values)
+                if index > num_values:
+                    raise IndexError("index is more than one offset away from values array")
+                if index == num_values:
+                    self.values.append(expression)
+                else:
+                    self.values[index] = expression
+
+            def set_current_level(self, name, expression):
+                """Set 'name' to 'expression' only in the current level; if it exists, modify it; otherwise, add it"""
+                return self.set(name, expression)
+
+            @unroll_safe
+            def get(self, name):
+                """Retrieve 'name' from the environment stack by searching through all levels"""
+                index = self.__locate__(name)
+                return self.values[index]
+
+            def unset(self, name, stack=None):
+                """Unset 'name' only in the current level; will not search through the entire environment"""
+                pass
+
+            def size(self):
+                """Non-optimized convenience method; count the number of unique names in the entire environment"""
+                return len(self.names)
+
+            def clone(self):
+                """Clone an environment by copying the stack (note that the levels will only be copied shallowly so fix() may
+                be necessary so the levels are immune to updates from other sources)"""
+                names = {}  # can't use dict(...), only {}, in RPython
+                for k in self.names:
+                    names[k] = self.names[k]
+                return SimpleEnvironment(names, list(self.values))
+
+            def fix(self):
+                """Collapse all of the levels into one to fix the current global display; this has the theoretical benefit of
+                making clone() faster since only a 1-item list is copied. In other words, using fix() assumes that a function
+                will be declared once (fixed) and called many times (clone)"""
+                pass
+
+        def test():
+            create_environment_with_natives()
+            program = Parser("let var a := 0 in (for i := 1 to 9 do a := a - i; a) end").parse()
+            environment = SimpleEnvironment()
+            result = program.evaluate(environment)
+            assert isinstance(result, IntegerValue)
+            return result.integer
+
+        # the test will output many lines of 'bh: ...' logging at the end (see https://morepypy.blogspot.com/2010/06/blackhole-interpreter.html for more info)
+        # this is due to the trace failing a guard at some point and the meta-interpreter invoking the blackhole interpreter to get out of jitcode-land
+        # and the optimized trace is 73 operations long
+        #self.assertEqual(self.interpret_in_python(test, []), -45)
+        #self.translate_to_graph(test, [])
         self.assertEqual(self.meta_interpret(test, []), -45)
 
 
