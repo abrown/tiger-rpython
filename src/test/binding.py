@@ -33,30 +33,6 @@ class TestBinding(unittest.TestCase):
         self.sut.pop()
         self.assertEqual(1, self.sut.get('a'))
 
-    def test_fixing(self):
-        self.sut.set('a', 1)
-        self.sut.push()
-        self.sut.set('b', 2)
-        self.sut.push()
-        self.sut.set('a', 3)
-
-        env = self.sut.fix()
-
-        self.assertEqual(2, env.size())
-        self.assertEqual(2, env.get('b'))
-        self.assertEqual(3, env.get('a'))
-
-    def test_fixing_hides_updates(self):
-        self.sut.set('a', 1)
-        cloned = self.sut.clone()
-        fixed = self.sut.fix()
-
-        self.sut.set('a', 2)
-
-        self.assertEqual(2, self.sut.get('a'))
-        self.assertEqual(2, cloned.get('a'))
-        self.assertEqual(1, fixed.get('a'))
-
 
 if __name__ == '__main__':
     unittest.main()

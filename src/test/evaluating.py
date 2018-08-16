@@ -2,6 +2,7 @@ import unittest
 
 from src.ast import *
 from src.environment import Environment
+from src.parser import Parser
 
 
 class TestEvaluating(unittest.TestCase):
@@ -45,6 +46,44 @@ class TestEvaluating(unittest.TestCase):
         self.assertEqual(2, result.length)
         self.assertEqual(2, len(result.array))
         self.assertEqual(IntegerValue(4), result.array[0])
+
+    def test_environment_affected_by_function_call(self):
+        code = """
+        let 
+          function x() = a := 99
+        in
+          x()
+        end
+        """
+        program = Parser(code).parse()
+        env = Environment()
+        env.set_current_level('a', IntegerValue(42))
+
+        # with 'a := 42', run the function to change the environment
+        program.evaluate(env)
+
+        self.assertEqual(IntegerValue(99), env.get('a'))
+
+    def test_scoped_environment_still_affected_by_function_call(self):
+        code = """
+        let 
+          function x() = a := 99
+        in
+          let 
+            var a := 0
+          in
+            x()
+          end
+        end
+        """
+        program = Parser(code).parse()
+        env = Environment()
+        env.set_current_level('a', IntegerValue(42))
+
+        # with 'a := 42', run the function to change the environment and it should still affect the outer scope
+        program.evaluate(env)
+
+        self.assertEqual(IntegerValue(99), env.get('a'))
 
 
 if __name__ == '__main__':

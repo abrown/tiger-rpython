@@ -32,19 +32,16 @@ except ImportError:
 
 # end of RPython setup
 
-
-class Cloneable:
-    def clone(self):
-        return self
-
-
 class EnvironmentLevel:
     """
     Contains the name bindings at a given level
     """
     _immutable_ = True
 
-    def __init__(self):
+    # TODO virtualize the expressions; maybe the parent?
+
+    def __init__(self, parent):
+        self.parent = parent
         self.bindings = {}  # map of names to indices
         self.expressions = []  # indexed expressions
 
@@ -52,132 +49,144 @@ class EnvironmentLevel:
         return '%s => %s' % (self.bindings, self.expressions)
 
 
-class Environment(Cloneable):
+class Environment:
     """
-    Holds a stack of EnvironmentLevels and a level index to the current one; push() and pop() modify this stack and index.
-    Each level contains a dictionary of names to expression index (diff. from level index) and a list of indexed expressions.
-    To find a name (see __locate__), inspect each dictionary at each level until the name is found and return the level and its expression index
+    Holds a linked-list of EnvironmentLevels and points to the last one; push() and pop() modify this stack and index.
+    Each level contains a dictionary of names to expression index (diff. from level index) and a list of indexed \
+    expressions. To find a name (see __locate__), inspect each dictionary at each level until the name is found and
+    return the level and its expression index
     """
     _immutable_ = True
 
     # TODO specialize get/set/etc. on stack passed
-    def __init__(self, stack=None, type_stack=None):
-        self.var_stack = stack or [EnvironmentLevel()]
-        self.type_stack = type_stack or [EnvironmentLevel()]
+    def __init__(self, local_variables=None, local_types=None):
+        self.local_variables = local_variables or EnvironmentLevel(None)
+        self.local_types = local_types or EnvironmentLevel(None)
 
     def push(self):
         """Create a new environment level (i.e. frame)"""
-        self.var_stack.append(EnvironmentLevel())
-        self.type_stack.append(EnvironmentLevel())
+        self.local_variables = EnvironmentLevel(self.local_variables)
+        self.local_types = EnvironmentLevel(self.local_types)
 
     def pop(self):
         """Remove and forget the topmost environment level (i.e. frame)"""
-        assert (len(self.var_stack) > 0)
-        self.var_stack.pop()
-        assert (len(self.type_stack) > 0)
-        self.type_stack.pop()
+        assert self.local_variables.parent is not None
+        self.local_variables = self.local_variables.parent
+        assert self.local_types.parent is not None
+        self.local_types = self.local_types.parent
 
-    def set(self, name, expression, stack=None):
+    def add(self, name, expression, level):
+        """
+        Add a name to the current level
+        """
+        assert isinstance(level, EnvironmentLevel)
+        index = len(level.expressions)
+        level.bindings[name] = index
+        level.expressions.append(expression)
+
+    def set(self, name, expression, level=None):
         """
         Set 'name' to 'expression'; if it exists in a prior level, modify it there; otherwise, add it to the current
         level
         """
-        stack = stack or self.var_stack
-        level, index = self.__locate__(name, stack)
-        if not level:
+        level = level or self.local_variables
+        assert isinstance(level, EnvironmentLevel)
+
+        found_level, index = self.__locate__(name, level)
+        if not found_level:
             # location not found, add it to the current level
-            level = stack[-1]
-            index = len(level.expressions)
-            level.bindings[name] = index
-            level.expressions.append(expression)
+            self.add(name, expression, level)
         else:
             # location found, modify it
-            level.expressions[index] = expression
+            found_level.expressions[index] = expression
 
-    def set_current_level(self, name, expression, stack=None):
+    def set_current_level(self, name, expression, level=None):
         """Set 'name' to 'expression' only in the current level; if it exists, modify it; otherwise, add it"""
-        stack = stack or self.var_stack
-        level = stack[-1]
+        level = level or self.local_variables
+        assert isinstance(level, EnvironmentLevel)
+
         if name in level.bindings:
             # if it exists in the current level, overwrite it
             index = level.bindings[name]
             level.expressions[index] = expression
         else:
             # if not, add it
-            index = len(level.expressions)
-            level.bindings[name] = index
-            level.expressions.append(expression)
+            self.add(name, expression, level)
 
-    def get(self, name, stack=None):
+    def get(self, name, level=None):
         """Retrieve 'name' from the environment stack by searching through all levels"""
-        stack = stack or self.var_stack
-        level, index = self.__locate__(name, stack)
+        level = level or self.local_variables
+        assert isinstance(level, EnvironmentLevel)
+
+        level, index = self.__locate__(name, level)
         if not level or index < 0:
             return None  # TODO throw?
         else:
             return level.expressions[index]
 
-    def unset(self, name, stack=None):
+    def unset(self, name, level=None):
         """Unset 'name' only in the current level; will not search through the entire environment"""
-        stack = stack or self.var_stack
-        level = stack[-1]
+        level = level or self.local_variables
+        assert isinstance(level, EnvironmentLevel)
+
+        # TODO need to remove from the expressions list as well?
         return level.bindings.pop(name, None)
 
-    def size(self):
+    def size(self, level=None):
         """Non-optimized convenience method; count the number of unique names in the entire environment"""
+        level = level or self.local_variables
         names = {}
-        for level in self.var_stack:
+        while level:
             for name in level.bindings:
                 names[name] = 1
+            level = level.parent
         return len(names)
 
     def clone(self):
         """Clone an environment by copying the stack (note that the levels will only be copied shallowly so fix() may
         be necessary so the levels are immune to updates from other sources)"""
-        return Environment(list(self.var_stack), list(self.type_stack))
+        return Environment(self.local_variables, self.local_types)
 
-    def fix(self):
-        """Collapse all of the levels into one to fix the current global display; this has the theoretical benefit of
-        making clone() faster since only a 1-item list is copied. In other words, using fix() assumes that a function
-        will be declared once (fixed) and called many times (clone)"""
-        new_var_stack = self.__collapse__(self.var_stack)
-        new_type_stack = self.__collapse__(self.type_stack)
-        return Environment(new_var_stack, new_type_stack)
+    # TODO it may be interesting to try to collapse environment levels at function declarations as an optimization
+    # def fix(self):
+    #     """Collapse all of the levels into one to fix the current global display; this has the theoretical benefit of
+    #     making clone() faster since only a 1-item list is copied. In other words, using fix() assumes that a function
+    #     will be declared once (fixed) and called many times (clone)"""
+    #     new_var_stack = self.__collapse__(self.var_stack)
+    #     new_type_stack = self.__collapse__(self.type_stack)
+    #     return Environment(new_var_stack, new_type_stack)
+    #
+    # def __collapse__(self, stack):
+    #     """
+    #     Iterate over all levels and record all unique names; later levels will overwrite previous levels' names if they
+    #     are the same name
+    #     """
+    #     new_level = EnvironmentLevel()
+    #     for level in stack:
+    #         for name in level.bindings:
+    #             old_index = level.bindings[name]
+    #             expression = level.expressions[old_index]
+    #             if name in new_level.bindings:
+    #                 # if it exists in the current level, overwrite it
+    #                 new_index = new_level.bindings[name]
+    #                 new_level.expressions[new_index] = expression
+    #             else:
+    #                 # if not, add it
+    #                 new_index = len(new_level.expressions)
+    #                 new_level.bindings[name] = new_index
+    #                 new_level.expressions.append(expression)
+    #     return [new_level]
 
-    def __collapse__(self, stack):
-        """
-        Iterate over all levels and record all unique names; later levels will overwrite previous levels' names if they
-        are the same name
-        """
-        new_level = EnvironmentLevel()
-        for level in stack:
-            for name in level.bindings:
-                old_index = level.bindings[name]
-                expression = level.expressions[old_index]
-                if name in new_level.bindings:
-                    # if it exists in the current level, overwrite it
-                    new_index = new_level.bindings[name]
-                    new_level.expressions[new_index] = expression
-                else:
-                    # if not, add it
-                    new_index = len(new_level.expressions)
-                    new_level.bindings[name] = new_index
-                    new_level.expressions.append(expression)
-        return [new_level]
-
-    # TODO make elidable only if we can guarantee that push/pop have not changed
     @elidable
-    def __locate__(self, name, stack):
-        expression_index = -1
-        level_index = len(stack) - 1
-        level = None
-        while expression_index < 0 <= level_index:
-            level = stack[level_index]
+    def __locate__(self, name, level):
+        assert isinstance(name, str)
+        assert isinstance(level, EnvironmentLevel)
+        while level:
             if name in level.bindings:
-                expression_index = level.bindings[name]
+                return level, level.bindings[name]
             else:
-                level_index -= 1
-        return level if level_index >= 0 else None, expression_index
+                level = level.parent
+        return None, -1
 
     def __str__(self):
-        return 'Environment(level=%d, stack=[%s])' % (self.level, ', '.join(str(l) for l in self.var_stack))
+        return 'Environment(var_stack=%s, type_stack=%s)' % (self.local_variables, self.local_types)
