@@ -50,7 +50,7 @@ def jitpolicy(driver):
 
 
 def loop(code, expression, environment):
-    jitdriver.jit_merge_point(code=code, expression=expression, environment=environment)
+    #jitdriver.jit_merge_point(code=code, expression=expression, environment=environment)
     return expression.evaluate(environment)
 
 
@@ -479,8 +479,9 @@ class While(Exp):
 
         result = None
         while condition_value.integer != 0:
+            jitdriver.jit_merge_point(code=self, expression=self.body, environment=env)
             try:
-                result = loop(self, self.body, env)
+                result = self.body.evaluate(env)
             except BreakException:
                 break
             condition_value = self.condition.evaluate(env)

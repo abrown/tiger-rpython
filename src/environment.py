@@ -38,8 +38,6 @@ class EnvironmentLevel:
     """
     _immutable_ = True
 
-    # TODO virtualize the expressions; maybe the parent?
-
     def __init__(self, parent):
         self.parent = parent
         self.bindings = {}  # map of names to indices
@@ -146,36 +144,6 @@ class Environment:
         """Clone an environment by copying the stack (note that the levels will only be copied shallowly so fix() may
         be necessary so the levels are immune to updates from other sources)"""
         return Environment(self.local_variables, self.local_types)
-
-    # TODO it may be interesting to try to collapse environment levels at function declarations as an optimization
-    # def fix(self):
-    #     """Collapse all of the levels into one to fix the current global display; this has the theoretical benefit of
-    #     making clone() faster since only a 1-item list is copied. In other words, using fix() assumes that a function
-    #     will be declared once (fixed) and called many times (clone)"""
-    #     new_var_stack = self.__collapse__(self.var_stack)
-    #     new_type_stack = self.__collapse__(self.type_stack)
-    #     return Environment(new_var_stack, new_type_stack)
-    #
-    # def __collapse__(self, stack):
-    #     """
-    #     Iterate over all levels and record all unique names; later levels will overwrite previous levels' names if they
-    #     are the same name
-    #     """
-    #     new_level = EnvironmentLevel()
-    #     for level in stack:
-    #         for name in level.bindings:
-    #             old_index = level.bindings[name]
-    #             expression = level.expressions[old_index]
-    #             if name in new_level.bindings:
-    #                 # if it exists in the current level, overwrite it
-    #                 new_index = new_level.bindings[name]
-    #                 new_level.expressions[new_index] = expression
-    #             else:
-    #                 # if not, add it
-    #                 new_index = len(new_level.expressions)
-    #                 new_level.bindings[name] = new_index
-    #                 new_level.expressions.append(expression)
-    #     return [new_level]
 
     @elidable
     def __locate__(self, name, level):
