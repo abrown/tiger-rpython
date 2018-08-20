@@ -1,0 +1,90 @@
+./src/benchmark/benchmark.sh src/benchmark/while-100k.tig;  ./src/benchmark/benchmark.sh src/benchmark/while-100m.tig;  ./src/benchmark/benchmark.sh src/benchmark/while-10k.tig;  ./src/benchmark/benchmark.sh src/benchmark/while-10m.tig;  ./src/benchmark/benchmark.sh src/benchmark/while-1k.tig;  ./src/benchmark/benchmark.sh src/benchmark/while-1m.tig;
+python src/main/tiger_interpreter.py src/benchmark/while-100k.tig
+        Time: 0.63user 0.00system 0:00.63elapsed 99%CPU (0avgtext+0avgdata 7616maxresident)k 0inputs+0outputs (0major+1011minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(100000)
+
+bin/tiger-interpreter-no-jit src/benchmark/while-100k.tig
+        Time: 0.00user 0.00system 0:00.02elapsed 45%CPU (0avgtext+0avgdata 6100maxresident)k 0inputs+0outputs (0major+1143minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(100000)
+
+bin/tiger-interpreter src/benchmark/while-100k.tig
+        Time: 0.01user 0.00system 0:00.01elapsed 100%CPU (0avgtext+0avgdata 9668maxresident)k 0inputs+48outputs (0major+1261minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(100000)
+
+python src/main/tiger_interpreter.py src/benchmark/while-100m.tig
+        Time: 636.34user 0.00system 10:37.06elapsed 99%CPU (0avgtext+0avgdata 7508maxresident)k 0inputs+0outputs (0major+1011minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(100000000)
+
+bin/tiger-interpreter-no-jit src/benchmark/while-100m.tig
+        Time: 7.95user 0.00system 0:07.98elapsed 99%CPU (0avgtext+0avgdata 10268maxresident)k 0inputs+0outputs (0major+2180minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(100000000)
+
+bin/tiger-interpreter src/benchmark/while-100m.tig
+        Time: 7.26user 0.00system 0:07.29elapsed 99%CPU (0avgtext+0avgdata 15740maxresident)k 0inputs+48outputs (0major+2779minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(100000000)
+
+python src/main/tiger_interpreter.py src/benchmark/while-10k.tig
+        Time: 0.07user 0.00system 0:00.07elapsed 97%CPU (0avgtext+0avgdata 7584maxresident)k 0inputs+0outputs (0major+1010minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(10000)
+
+bin/tiger-interpreter-no-jit src/benchmark/while-10k.tig
+        Time: 0.00user 0.00system 0:00.01elapsed 21%CPU (0avgtext+0avgdata 6192maxresident)k 0inputs+0outputs (0major+1141minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(10000)
+
+bin/tiger-interpreter src/benchmark/while-10k.tig
+        Time: 0.00user 0.00system 0:00.00elapsed 100%CPU (0avgtext+0avgdata 9660maxresident)k 0inputs+48outputs (0major+1259minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(10000)
+
+python src/main/tiger_interpreter.py src/benchmark/while-10m.tig
+        Time: 63.62user 0.00system 1:03.68elapsed 99%CPU (0avgtext+0avgdata 7520maxresident)k 0inputs+0outputs (0major+1009minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(10000000)
+
+bin/tiger-interpreter-no-jit src/benchmark/while-10m.tig
+        Time: 0.81user 0.00system 0:00.83elapsed 98%CPU (0avgtext+0avgdata 6672maxresident)k 0inputs+0outputs (0major+1245minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(10000000)
+
+bin/tiger-interpreter src/benchmark/while-10m.tig
+        Time: 0.73user 0.00system 0:00.73elapsed 99%CPU (0avgtext+0avgdata 10360maxresident)k 0inputs+48outputs (0major+1411minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(10000000)
+
+python src/main/tiger_interpreter.py src/benchmark/while-1k.tig
+        Time: 0.01user 0.00system 0:00.01elapsed 100%CPU (0avgtext+0avgdata 7596maxresident)k 0inputs+0outputs (0major+1011minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(1000)
+
+bin/tiger-interpreter-no-jit src/benchmark/while-1k.tig
+        Time: 0.00user 0.00system 0:00.00elapsed 100%CPU (0avgtext+0avgdata 2608maxresident)k 0inputs+0outputs (0major+270minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(1000)
+
+bin/tiger-interpreter src/benchmark/while-1k.tig
+        Time: 0.00user 0.00system 0:00.00elapsed 100%CPU (0avgtext+0avgdata 6676maxresident)k 0inputs+48outputs (0major+510minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(1000)
+
+python src/main/tiger_interpreter.py src/benchmark/while-1m.tig
+        Time: 6.39user 0.00system 0:06.40elapsed 99%CPU (0avgtext+0avgdata 7584maxresident)k 0inputs+0outputs (0major+1010minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(1000000)
+
+bin/tiger-interpreter-no-jit src/benchmark/while-1m.tig
+        Time: 0.08user 0.00system 0:00.10elapsed 86%CPU (0avgtext+0avgdata 6124maxresident)k 0inputs+0outputs (0major+1149minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(1000000)
+
+bin/tiger-interpreter src/benchmark/while-1m.tig
+        Time: 0.08user 0.00system 0:00.08elapsed 97%CPU (0avgtext+0avgdata 9724maxresident)k 0inputs+48outputs (0major+1289minor)pagefaults 0swaps
+        Code: 0
+        Value: IntegerValue(1000000)
