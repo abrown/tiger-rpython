@@ -39,6 +39,10 @@ benchmarks: binaries
 	$(foreach program, $(shell find src/benchmark/*.tig), ./src/benchmark/benchmark.sh $(program);)
 PHONY: benchmarks
 
+benchmarks-c:
+	gcc src/benchmark/while-parameterized.c -O0 -o bin/while-parameterized
+	time bin/while-parameterized 100000000
+
 venv:
 	python -m virtualenv --python=/usr/bin/python2.7 venv
 	source venv/bin/activate && pip install -r requirements.txt
