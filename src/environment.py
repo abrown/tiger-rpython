@@ -145,7 +145,7 @@ class Environment:
         be necessary so the levels are immune to updates from other sources)"""
         return Environment(self.local_variables, self.local_types)
 
-    @elidable
+    #@elidable
     def __locate__(self, name, level):
         assert isinstance(name, str)
         assert isinstance(level, EnvironmentLevel)
