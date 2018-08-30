@@ -49,11 +49,6 @@ def jitpolicy(driver):
         raise NotImplemented("Abandon if we are unable to use RPython's JitPolicy")
 
 
-def loop(code, expression, environment):
-    #jitdriver.jit_merge_point(code=code, expression=expression, environment=environment)
-    return expression.evaluate(environment)
-
-
 try:
     from rpython.rlib.objectmodel import import_from_mixin
 except ImportError:
@@ -498,6 +493,9 @@ class For(Exp):
         self.end = end
         self.body = body
 
+        # transform this for-loop to a while-loop in order to use the merge point in the while-loop
+        self.while_expression = self.convert_to_while()
+
     def to_string(self):
         return '%s(var=%s, start=%s, end=%s, body=%s)' % (
             self.__class__.__name__, self.var, self.start.to_string(), self.end.to_string(), self.body.to_string())
@@ -506,24 +504,26 @@ class For(Exp):
         return RPythonizedObject.equals(self, other) and self.var == other.var and self.start.equals(
             other.start) and self.end.equals(other.end) and self.body.equals(other.body)
 
+    def convert_to_while(self):
+        return Sequence([
+            # var iterator := start
+            Assign(LValue(self.var), self.start),
+            # while iterator <= end:
+            While(
+                LessThanOrEquals(LValue(self.var), self.end),
+                # do body; iterator = iterator + 1
+                Sequence([
+                    self.body,
+                    Assign(LValue(self.var), Add(LValue(self.var), IntegerValue(1)))
+                ])
+            )
+        ])
+
     def evaluate(self, env):
         env.push()
-        start_value = self.start.evaluate(env)
-        assert isinstance(start_value, IntegerValue)
-        end_value = self.end.evaluate(env)
-        assert isinstance(end_value, IntegerValue)
-
-        iterator = IntegerValue(start_value.integer)
-        for i in range(iterator.integer, end_value.integer + 1):
-            iterator.integer = i
-            env.set_current_level(self.var, iterator)
-            try:
-                result = loop(self, self.body, env)
-                assert result is None
-            except BreakException:
-                break
-
+        self.while_expression.evaluate(env)
         env.pop()
+        return None
 
 
 class Break(Exp):
