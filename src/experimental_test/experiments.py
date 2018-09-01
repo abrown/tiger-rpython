@@ -629,6 +629,49 @@ class TestExperiments(unittest.TestCase):
 
         self.assertEqual(self.meta_interpret(test, []), 100)
 
+    def test_nested_while_loops(self):
+        def get_location(code, exp, env):
+            return "%s" % code.to_string()
+
+        jitdriver = JitDriver(greens=['code', 'expression', 'environment'], reds='auto',
+                              get_printable_location=get_location)
+
+        class ModifiedWhile(While):
+            _immutable_ = True
+
+            def evaluate(self, env):
+                condition_value = self.condition.evaluate(env)
+                assert isinstance(condition_value, IntegerValue)
+
+                result = None
+                while condition_value.integer != 0:
+                    jitdriver.jit_merge_point(code=self, expression=self.body, environment=env)
+                    try:
+                        result = self.body.evaluate(env)
+                    except BreakException:
+                        break
+                    condition_value = self.condition.evaluate(env)
+
+                return result
+
+        def test():
+            program = Parser("""
+            let var a := 0 var b := 0 in 
+                while a < 100 do
+                   (a := a + 1;
+                   while b < 100 do
+                       (b := b + 1);
+                    b := 0
+                   )
+            end""").parse()
+
+            environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
+            result = program.evaluate(environment)
+            assert isinstance(result, IntegerValue)
+            return result.integer
+
+        self.assertEqual(self.meta_interpret(test, []), 100)
+
 
 if __name__ == '__main__':
     unittest.main()
