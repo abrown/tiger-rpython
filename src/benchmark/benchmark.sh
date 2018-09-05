@@ -16,6 +16,6 @@ function run() {
     echo -e "\tValue: ${STDOUT}\n"
 }
 
-run "python src/main/tiger_interpreter.py" ${TIGER_PROGRAM}
 run "bin/tiger-interpreter-no-jit" ${TIGER_PROGRAM}
 run "bin/tiger-interpreter" ${TIGER_PROGRAM}
+run "python src/main/tiger_interpreter.py" ${TIGER_PROGRAM}

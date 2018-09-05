@@ -43,6 +43,9 @@ benchmarks-c:
 	gcc src/benchmark/while-parameterized.c -O0 -o bin/while-parameterized
 	time bin/while-parameterized 100000000
 
+benchmarks-sumprimes: binaries
+	./src/benchmark/benchmark.sh src/benchmark/sumprimes-10k.tig
+
 venv:
 	python -m virtualenv --python=/usr/bin/python2.7 venv
 	source venv/bin/activate && pip install -r requirements.txt
