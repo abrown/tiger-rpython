@@ -1,0 +1,11 @@
+let
+    var a := 0
+    var b := 0
+in
+    (while a < 2000 do
+        (a := a + 1;
+            while b < 2000 do
+                (b := b + 1);
+        b := 0);
+    a)
+end
