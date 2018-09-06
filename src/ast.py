@@ -34,11 +34,11 @@ except ImportError:
         return False
 
 
-def get_location(code, exp, env):
+def get_location(code):
     return "%s" % code.to_string()
 
 
-jitdriver = JitDriver(greens=['code', 'expression', 'environment'], reds='auto', get_printable_location=get_location)
+jitdriver = JitDriver(greens=['code'], reds='auto', get_printable_location=get_location)
 
 
 def jitpolicy(driver):
@@ -474,7 +474,7 @@ class While(Exp):
 
         result = None
         while condition_value.integer != 0:
-            jitdriver.jit_merge_point(code=self, expression=self.body, environment=env)
+            jitdriver.jit_merge_point(code=self)
             try:
                 result = self.body.evaluate(env)
             except BreakException:
@@ -553,6 +553,7 @@ class Let(Exp):
                and list_equals(self.declarations, other.declarations) \
                and list_equals(self.expressions, other.expressions)
 
+    @unroll_safe
     def evaluate(self, env):
         if not env:  # not isinstance(env, Environment):
             raise InterpretationError('No environment in %s' % self.to_string())
@@ -724,6 +725,7 @@ class Sequence(Exp):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and list_equals(self.expressions, other.expressions)
 
+    @unroll_safe
     def evaluate(self, env):
         value = None
         for expression in self.expressions:
