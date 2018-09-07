@@ -49,8 +49,7 @@ class TestOptimizingWhileLoops(unittest.TestCase):
     These tests show the effects of different attempts to optimize Tiger while loops. The tests all operate on the same
     basic algorithm:
      - set a to 0
-     - loop from 1 to 9, subtracting each number from a
-     - return a (which should be -45)
+     - repeatedly increment a by 1 until it is 100 or greater
     """
 
     def test_current_implementation(self):
