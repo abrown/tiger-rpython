@@ -204,6 +204,42 @@ class TestOptimizingWhileLoops(unittest.TestCase):
         # self.assertEqual(self.interpret_in_python(test, []), 50)
         # self.assertEqual(self.interpret_from_graph(test, []), 100)
 
+    def test_sumprimes(self):
+        def test():
+            program = Parser("""
+            let
+              var max : int := 50
+              var s : int := 0
+              var n : int := 2
+            in
+              while n <= max do
+                 let
+                    var p : int := 1
+                    var d : int := 2
+                  in
+                    while d <= (n - 1) do
+                       let
+                         var m : int := d * (n / d)
+                       in
+                         if n <= m then
+                           p := 0;
+                         d := d + 1
+                       end;
+                     if p <> 0 then
+                       s := s + n;
+                     n := n + 1
+                  end;
+               s
+            end
+            """).parse()
+
+            environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
+            result = program.evaluate(environment)
+            assert isinstance(result, IntegerValue)
+            return result.integer
+
+        self.assertEqual(interpretation_mechanisms.meta_interpret(test, []), 328)
+
 
 if __name__ == '__main__':
     unittest.main()
