@@ -1,0 +1,9 @@
+let
+  var x := 42
+  function f() =
+    print(x)
+in
+  let var x := 99 in
+    f()
+  end
+end

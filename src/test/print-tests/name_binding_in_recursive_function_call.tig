@@ -1,0 +1,9 @@
+let
+  function a(n:int) : int = (
+    print(n);
+    if n > 0 then a(n - 1);
+    print(n)
+  )
+in
+  a(5)
+end
