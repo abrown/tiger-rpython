@@ -284,9 +284,11 @@ class TypeId(Declaration):
 class LValue(Exp):
     _immutable_ = True
 
-    def __init__(self, name, next=None):
+    def __init__(self, name, next=None, level=0, index=0):
         self.name = name
         self.next = next
+        self.level = level
+        self.index = index
 
     def to_string(self):
         return '%s(name=%s, next=%s)' % (

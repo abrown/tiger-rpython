@@ -7,7 +7,7 @@ from src.parser import *
 class TestParsing(unittest.TestCase):
     def assertParsesTo(self, text, expected_ast):
         sut = Parser(text)
-        actual_ast = sut.parse()
+        actual_ast = sut.parse(False)
         self.assertEqual(expected_ast, actual_ast)
 
     def assertParseFails(self, text):
@@ -90,6 +90,12 @@ class TestParsing(unittest.TestCase):
         self.assertParsesTo('function x(y:int, z:int):int = add(y, z)',
                             FunctionDeclaration('x', [FunctionParameter('y', TypeId('int')),
                                                       FunctionParameter('z', TypeId('int'))], TypeId('int'),
+                                                FunctionCall('add', [LValue('y'), LValue('z')])))
+
+    @unittest.skip(reason="Skip until we allow untyped function declarations")
+    def test_untyped_function_declaration(self):
+        self.assertParsesTo('function x(y, z) = add(y, z)',
+                            FunctionDeclaration('x', [FunctionParameter('y'), FunctionParameter('z')], None,
                                                 FunctionCall('add', [LValue('y'), LValue('z')])))
 
     def test_type_declaration(self):

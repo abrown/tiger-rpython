@@ -5,6 +5,7 @@ from src.ast import NilValue, IntegerValue, StringValue, ArrayCreation, TypeId, 
     TypeDeclaration, ArrayType, VariableDeclaration, FunctionDeclaration, RecordType, Sequence, Multiply, Divide, Add, \
     Subtract, GreaterThanOrEquals, LessThanOrEquals, Equals, NotEquals, GreaterThan, LessThan, \
     And, Or, FunctionParameter
+from src.scopes import transform_lvalues
 from src.tokenizer import Tokenizer
 from src.tokens import NumberToken, IdentifierToken, KeywordToken, SymbolToken, StringToken
 
@@ -66,8 +67,11 @@ class Parser:
     def __init__(self, text, file=None):
         self.tokenizer = Tokenizer(text, file)
 
-    def parse(self):
-        return self.expression()
+    def parse(self, absolutize_lvalues=True):
+        expression = self.expression()
+        if absolutize_lvalues:
+            transform_lvalues(expression)
+        return expression
 
     # recursive descent parse methods (organized alphabetically)
     def arguments(self):
