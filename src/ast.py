@@ -199,7 +199,7 @@ class ArrayCreation(Exp):
         initial_value = self.initial_value_expression.evaluate(env)
         assert (isinstance(initial_value, Value))
         # TODO type-check
-        type = env.get(self.type_id.name, env.local_types)
+        #type = env.get(self.type_id.name, env.local_types)
         return ArrayValue(length.integer, initial_value)
 
 
@@ -304,7 +304,7 @@ class LValue(Exp):
 
         # extract normal lvalue from environment
         assert (isinstance(lvalue, LValue))
-        value = env.get(self.name)
+        value = env.get((self.level, self.index))
         lvalue = lvalue.next
 
         # iterate over records and arrays
@@ -364,7 +364,7 @@ class FunctionCall(Exp):
 
     def evaluate(self, env):
         # find declaration
-        declaration = env.get(self.name)
+        declaration = env.get((0, 0))
         if not declaration:
             raise InterpretationError('Could not find function %s' % self.name)
         assert (isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration))
@@ -376,7 +376,7 @@ class FunctionCall(Exp):
 
         # use declaration environment for function call (note: push() allows us to reuse the frame)
         frame = declaration.environment.clone()
-        frame.push()
+        frame.push(len(declaration.parameters))
 
         # evaluate arguments
         value = None
@@ -384,7 +384,7 @@ class FunctionCall(Exp):
             name = declaration.parameters[i].name
             value = self.arguments[i].evaluate(env)
             assert (isinstance(value, Value))
-            frame.set_current_level(name, value)
+            frame.set((0, i), value)
 
         # evaluate body
         result = None
@@ -522,7 +522,7 @@ class For(Exp):
         ])
 
     def evaluate(self, env):
-        env.push()
+        env.push(0)  # TODO this may not work any more
         self.while_expression.evaluate(env)
         env.pop()
         return None
@@ -560,7 +560,7 @@ class Let(Exp):
         if not env:  # not isinstance(env, Environment):
             raise InterpretationError('No environment in %s' % self.to_string())
 
-        env.push()
+        env.push(len(self.declarations))
 
         for declaration in self.declarations:
             assert isinstance(declaration, Declaration)
@@ -594,10 +594,11 @@ class TypeDeclaration(Declaration):
 class VariableDeclaration(Declaration):
     _immutable_ = True
 
-    def __init__(self, name, type, exp):
+    def __init__(self, name, type, exp, index=0):
         Declaration.__init__(self, name)
         self.type = type
         self.exp = exp
+        self.index = 0
 
     def to_string(self):
         return '%s(name=%s, type=%s, exp=%s)' % (
@@ -610,7 +611,7 @@ class VariableDeclaration(Declaration):
     def evaluate(self, env):
         value = self.exp.evaluate(env)
         # TODO type-check
-        env.set_current_level(self.name, value)
+        env.set((0, self.index), value)
 
 
 class FunctionParameter(Declaration):
@@ -656,7 +657,8 @@ class FunctionDeclaration(Declaration):
 
     def evaluate(self, env):
         assert (env is not None)
-        env.set_current_level(self.name, self)
+        env.push(1)
+        env.set((0, 0), self)
         self.environment = env.clone()
 
 

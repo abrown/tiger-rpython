@@ -27,7 +27,8 @@ class TestEvaluating(unittest.TestCase):
                                          lambda a: IntegerValue(a.integer * a.integer))
         call = FunctionCall('square', [IntegerValue(7)])
         env = Environment()
-        env.set(decl.name, decl)
+        env.push(1)
+        env.set((0, 0), decl)
 
         result = call.evaluate(env)
 
@@ -57,7 +58,8 @@ class TestEvaluating(unittest.TestCase):
         """
         program = Parser(code).parse()
         env = Environment()
-        env.set_current_level('a', IntegerValue(42))
+        env.push(1)
+        env.set((0, 0), IntegerValue(42))
 
         # with 'a := 42', run the function to change the environment
         program.evaluate(env)
@@ -78,7 +80,8 @@ class TestEvaluating(unittest.TestCase):
         """
         program = Parser(code).parse()
         env = Environment()
-        env.set_current_level('a', IntegerValue(42))
+        env.push(1)
+        env.set((0, 0), IntegerValue(42))
 
         # with 'a := 42', run the function to change the environment and it should still affect the outer scope
         program.evaluate(env)
