@@ -1,6 +1,6 @@
 import unittest
 
-from src.environment import Environment
+from src.environment_with_dictionary_tree import Environment
 
 
 class TestBinding(unittest.TestCase):
@@ -8,6 +8,7 @@ class TestBinding(unittest.TestCase):
         self.sut = Environment()
 
     def test_simple_put_and_get(self):
+        self.sut.push(1)
         self.sut.set('a', 42)
         self.assertEqual(42, self.sut.get('a'))
 
@@ -15,6 +16,7 @@ class TestBinding(unittest.TestCase):
         self.assertEqual(None, self.sut.get('b'))
 
     def test_put_multiple(self):
+        self.sut.push(2)
         self.sut.set('c', "...")
         self.sut.set('a', 42)
 
@@ -23,8 +25,9 @@ class TestBinding(unittest.TestCase):
         self.assertEqual("...", self.sut.get('c'))
 
     def test_hiding(self):
+        self.sut.push(1)
         self.sut.set('a', 1)
-        self.sut.push()
+        self.sut.push(1)
 
         self.assertEqual(1, self.sut.get('a'))
         self.sut.set_current_level('a', 2)
