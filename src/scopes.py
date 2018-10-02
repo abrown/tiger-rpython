@@ -1,4 +1,5 @@
-from src.ast import Exp, Sequence, FunctionDeclaration, FunctionCall, Let, BinaryOperation, LValue, Program
+from src.ast import Exp, Sequence, FunctionDeclaration, FunctionCall, Let, BinaryOperation, LValue, Program, \
+    VariableDeclaration
 
 
 def transform_lvalues(exp):
@@ -100,16 +101,21 @@ class LValueTransformer:
 
     def transform(self, node):
         if isinstance(node, Let):
-            names = [declaration.name for declaration in node.declarations]
+            names = []
+            i = 0
+            for i in range(len(node.declarations)):
+                declaration = node.declarations[i]
+                declaration.index = i
+                names.append(declaration.name)
             self.scopes.append(names)
         elif isinstance(node, FunctionDeclaration):
             names = [parameter.name for parameter in node.parameters]
             names.insert(0, node.name)
             self.scopes.append(names)
         elif isinstance(node, LValue):
-            level, index = self.find(node.name)
-            node.level = level
-            node.index = index
+            node.level, node.index = self.find(node.name)
+        elif isinstance(node, FunctionCall):
+            node.level, node.index = self.find(node.name)
         elif isinstance(node, ExitScope):
             self.scopes.pop()
 

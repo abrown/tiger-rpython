@@ -1,5 +1,5 @@
 # Begin RPython setup; catch import errors so this can still run in CPython...
-from src.environment import EnvironmentInterface
+from src.environment_interface import EnvironmentInterface
 
 try:
     from rpython.rlib.jit import JitDriver, elidable, promote, unroll_safe, jit_debug, we_are_jitted
@@ -58,9 +58,9 @@ class Environment(EnvironmentInterface):
     _immutable_ = True
 
     # TODO specialize get/set/etc. on stack passed
-    def __init__(self):
-        self.local_variables = EnvironmentLevel(None, 0)  # TODO root level
-        self.local_types = EnvironmentLevel(None, 0)  # TODO root level
+    def __init__(self, local_variables=None, local_types=None):
+        self.local_variables = local_variables or EnvironmentLevel(None, 0)  # TODO root level
+        self.local_types = local_types or EnvironmentLevel(None, 0)  # TODO root level
 
     def push(self, number_of_names):
         """Create a new environment level (i.e. frame)"""
@@ -124,7 +124,7 @@ class Environment(EnvironmentInterface):
     def clone(self):
         """Clone an environment by copying the stack (note that the levels will only be copied shallowly so fix() may
         be necessary so the levels are immune to updates from other sources)"""
-        return Environment()
+        return Environment(self.local_variables, self.local_types)
 
     @elidable
     def __locate__(self, path, level):
@@ -133,12 +133,13 @@ class Environment(EnvironmentInterface):
         hops, index = path
         while hops >= 0 and level:
             if hops == 0:
-                assert 0 <= index < len(level.expressions)
+                if not 0 <= index < len(level.expressions):
+                    break  # in this case we have not found a valid slot for the path and should throw an error
                 return level, index
             hops -= 1
             level = level.parent
 
-        raise EnvironmentError('Expected path (%d, %d) to lead to a valid scope but it did not' % (hops, index))
+        raise EnvironmentError('Expected path (%d, %d) to lead to a valid scope but it did not' % (path[0], index))
 
     def __str__(self):
         return 'Environment(var_stack=%s, type_stack=%s)' % (self.local_variables, self.local_types)

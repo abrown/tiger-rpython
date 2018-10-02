@@ -1,7 +1,7 @@
 import unittest
 
 from src.ast import LValue, Let, FunctionDeclaration, FunctionCall, VariableDeclaration, \
-    FunctionParameter
+    FunctionParameter, Add, IntegerValue, Declaration
 from src.parser import Parser
 from src.scopes import transform_lvalues, DepthFirstAstIterator, ExitScope
 
@@ -38,48 +38,73 @@ class TestScopeTransformations(unittest.TestCase):
             self.assertIsInstance(instance, type)
 
     def test_iteration(self):
-        program = self.to_program("let var x := 42 in print(x) end")
+        program = self.to_program("let var x := 42 in x + 42 end")
         nodes = self.ast_to_list(program)
 
-        self.assertListTypesEqual([Let, VariableDeclaration, FunctionCall, LValue, ExitScope], nodes)
+        self.assertListTypesEqual([Let, VariableDeclaration, Add, LValue, IntegerValue, ExitScope], nodes)
 
     def test_more_complex_iteration(self):
         program = self.to_program(
-            "let var y := 42 in let function f(x : int) = print(y) in let var y := 43 in f(y) end end end")
+            "let var y := 42 in let function f(x : int) = y + x in let var y := 43 in f(y) end end end")
         nodes = self.ast_to_list(program)
 
         self.assertListTypesEqual([Let, VariableDeclaration,
-                                   Let, FunctionDeclaration, FunctionParameter, FunctionCall, LValue, ExitScope,
+                                   Let, FunctionDeclaration, FunctionParameter, Add, LValue, LValue, ExitScope,
                                    Let, VariableDeclaration, FunctionCall, LValue, ExitScope, ExitScope, ExitScope],
                                   nodes)
 
     def test_let(self):
-        program = self.to_program("let var x := 42 in print(x) end")
+        program = self.to_program("let var x := 42 in x + 42 end")
         x_used = self.find_first_expression(program, LValue)
 
         self.assertLocationIs(x_used, (0, 0))
 
     def test_let_nested(self):
-        program = self.to_program("let var x := 42 in let var y := 43 in print(x) end end")
+        program = self.to_program("let var x := 42 in let var y := 43 in x + y end end")
         x_used = self.find_first_expression(program, LValue)
 
         self.assertLocationIs(x_used, (1, 0))
 
     def test_let_multiple(self):
-        program = self.to_program("let var x := 42 var y := 43 in print(y) end")
+        program = self.to_program("let var x := 42 var y := 43 in y + x end")
         y_used = self.find_first_expression(program, LValue)
 
         self.assertLocationIs(y_used, (0, 1))
 
     def test_let_in_function_call(self):
-        program = self.to_program("let function f(x : int) = print(x) in let var y := 43 in f(y) end end")
+        program = self.to_program("""
+        let 
+            function print() = nil
+            function f(x : int) = print(x) 
+        in 
+            let 
+                var y := 43 
+            in 
+                f(y)
+                end
+        end
+        """)
         x_used = self.find_first_expression(program, LValue)
 
         self.assertLocationIs(x_used, (0, 1))  # the function name takes the first index slot
 
     def test_let_redefined_outside_function_call(self):
-        program = self.to_program(
-            "let var y := 42 in let function f(x : int) = print(y) in let var y := 43 in f(y) end end end")
+        program = self.to_program("""
+        let 
+            var y := 42 
+            function print() = nil
+        in 
+            let 
+                function f(x : int) = print(y) 
+            in 
+                let 
+                    var y := 43 
+                in 
+                    f(y)
+                end
+            end
+        end
+        """)
         y_used_first, y_used_second = self.find_all_expressions(program, LValue)
 
         self.assertLocationIs(y_used_first, (2, 0))  # y is from the first 'let' scope
@@ -87,7 +112,10 @@ class TestScopeTransformations(unittest.TestCase):
 
     def test_leaving_let(self):
         program = self.to_program("""
-        let var x := 42 in 
+        let 
+            var x := 42 
+            function print() = nil
+        in 
             (let var y := 42 in print(x) end;
             let var y := 42 in print(x) end;
             let var y := 42 in print(x) end)
@@ -98,6 +126,22 @@ class TestScopeTransformations(unittest.TestCase):
         self.assertLocationIs(x_used_first, (1, 0))
         self.assertLocationIs(x_used_second, (1, 0))
         self.assertLocationIs(x_used_third, (1, 0))
+
+    def test_indexing_of_let_bindings(self):
+        program = self.to_program("""
+        let 
+            var x := 42 
+            function y() = nil
+            var z := 99
+        in 
+            nil
+        end
+        """)
+        x, y, z = self.find_all_expressions(program, Declaration)
+
+        self.assertEqual(0, x.index)
+        self.assertEqual(1, y.index)
+        self.assertEqual(2, z.index)
 
 
 if __name__ == '__main__':
