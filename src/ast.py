@@ -350,10 +350,12 @@ class ArrayLValue(LValue):
 class FunctionCall(Exp):
     _immutable_ = True
 
-    def __init__(self, name, arguments):
+    def __init__(self, name, arguments, level=0, index=0):
         self.name = name
         assert (isinstance(arguments, list))
         self.arguments = arguments
+        self.level = level
+        self.index = index
 
     def to_string(self):
         return '%s(name=%s, args=%s)' % (self.__class__.__name__, self.name, list_to_string(self.arguments))
@@ -364,7 +366,7 @@ class FunctionCall(Exp):
 
     def evaluate(self, env):
         # find declaration
-        declaration = env.get((0, 0))
+        declaration = env.get((self.level, self.index))
         if not declaration:
             raise InterpretationError('Could not find function %s' % self.name)
         assert (isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration))
@@ -376,7 +378,9 @@ class FunctionCall(Exp):
 
         # use declaration environment for function call (note: push() allows us to reuse the frame)
         frame = declaration.environment.clone()
-        frame.push(len(declaration.parameters))
+        frame.push(len(declaration.parameters) + 1)
+
+        frame.set((0,0), declaration)
 
         # evaluate arguments
         value = None
@@ -384,7 +388,7 @@ class FunctionCall(Exp):
             name = declaration.parameters[i].name
             value = self.arguments[i].evaluate(env)
             assert (isinstance(value, Value))
-            frame.set((0, i), value)
+            frame.set((0, i + 1), value)
 
         # evaluate body
         result = None
@@ -423,7 +427,7 @@ class Assign(Exp):
     def evaluate(self, env):
         # TODO handle other types of lvalues
         value = self.expression.evaluate(env)
-        env.set(self.lvalue.name, value)
+        env.set((self.lvalue.level, self.lvalue.index), value)
 
 
 class If(Exp):
@@ -634,7 +638,7 @@ class FunctionParameter(Declaration):
 class FunctionDeclaration(Declaration):
     _immutable_ = True
 
-    def __init__(self, name, parameters, return_type, body, environment=None):
+    def __init__(self, name, parameters, return_type, body, environment=None, index=0):
         Declaration.__init__(self, name)
         assert isinstance(parameters, list)
         self.parameters = parameters
@@ -643,6 +647,7 @@ class FunctionDeclaration(Declaration):
         assert isinstance(body, Exp)
         self.body = body
         self.environment = environment or Environment()  # to be reset when the function declaration is evaluated
+        self.index = index
 
     def to_string(self):
         return '%s(name=%s, parameters=%s, return_type=%s, body=%s)' % (
@@ -657,8 +662,7 @@ class FunctionDeclaration(Declaration):
 
     def evaluate(self, env):
         assert (env is not None)
-        env.push(1)
-        env.set((0, 0), self)
+        env.set((0, self.index), self)
         self.environment = env.clone()
 
 

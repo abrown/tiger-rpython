@@ -10,10 +10,11 @@ class TestEvaluating(unittest.TestCase):
         decl = FunctionDeclaration('add',
                                    [FunctionParameter('a', TypeId('int')), FunctionParameter('b', TypeId('int'))],
                                    TypeId('int'),
-                                   Add(LValue('a'), LValue('b')))
+                                   Add(LValue('a', None, 0, 1), LValue('b', None, 0, 2)))
         call = FunctionCall('add', [IntegerValue(1), IntegerValue(1)])
         env = Environment()
-        env.set(decl.name, decl)
+        env.push(1)
+        env.set((0, 0), decl)
 
         result = call.evaluate(env)
 
@@ -56,15 +57,19 @@ class TestEvaluating(unittest.TestCase):
           x()
         end
         """
+        # [], [42], [x]...
+
         program = Parser(code).parse()
         env = Environment()
         env.push(1)
         env.set((0, 0), IntegerValue(42))
 
         # with 'a := 42', run the function to change the environment
+        a = program.declarations[0].body.lvalue
+        a.level, a.index = 2, 0
         program.evaluate(env)
 
-        self.assertEqual(IntegerValue(99), env.get('a'))
+        self.assertEqual(IntegerValue(99), env.get((0, 0)))
 
     def test_scoped_environment_still_affected_by_function_call(self):
         code = """
@@ -84,9 +89,12 @@ class TestEvaluating(unittest.TestCase):
         env.set((0, 0), IntegerValue(42))
 
         # with 'a := 42', run the function to change the environment and it should still affect the outer scope
+        a1 = program.declarations[0].body.lvalue
+        a1.level, a1.index = 2, 0
+
         program.evaluate(env)
 
-        self.assertEqual(IntegerValue(99), env.get('a'))
+        self.assertEqual(IntegerValue(99), env.get((0, 0)))
 
 
 if __name__ == '__main__':
