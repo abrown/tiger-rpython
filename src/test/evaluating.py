@@ -2,7 +2,6 @@ import unittest
 
 from src.ast import *
 from src.environment import Environment
-from src.parser import Parser
 
 
 class TestEvaluating(unittest.TestCase):
@@ -50,29 +49,36 @@ class TestEvaluating(unittest.TestCase):
         self.assertEqual(IntegerValue(4), result.array[0])
 
     def test_environment_affected_by_function_call(self):
-        code = """
+        """
+        /* equivalent code */
         let 
           function x() = a := 99
         in
           x()
         end
         """
-        # [], [42], [x]...
 
-        program = Parser(code).parse()
+        program = Let(
+            declarations=[
+                FunctionDeclaration(name='x', parameters=[], return_type=None,
+                                    body=Assign(lvalue=LValue(name='a', next=None, level=2, index=0),
+                                                expression=IntegerValue(99)))],
+            expressions=[FunctionCall(name='x', level=0, index=0, arguments=[])])
+        # note the manually assigned path for 'a'
+
+        # set 'a := 42' in a pre-existing environment
         env = Environment()
         env.push(1)
         env.set((0, 0), IntegerValue(42))
 
-        # with 'a := 42', run the function to change the environment
-        a = program.declarations[0].body.lvalue
-        a.level, a.index = 2, 0
+        # run the function to program the environment
         program.evaluate(env)
 
         self.assertEqual(IntegerValue(99), env.get((0, 0)))
 
     def test_scoped_environment_still_affected_by_function_call(self):
-        code = """
+        """
+        /* equivalent code */
         let 
           function x() = a := 99
         in
@@ -83,15 +89,24 @@ class TestEvaluating(unittest.TestCase):
           end
         end
         """
-        program = Parser(code).parse()
+        program = Let(
+            declarations=[
+                FunctionDeclaration(name='x', parameters=[], return_type=None,
+                                    body=Assign(lvalue=LValue(name='a', next=None, level=2, index=0),
+                                                expression=IntegerValue(99)))],
+            expressions=[
+                Let(
+                    declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
+                    expressions=[
+                        FunctionCall(name='x', level=1, index=0, arguments=[])])])
+        # note the manually assigned paths for 'a' and 'x'
+
+        # set 'a := 42' in a pre-existing environment
         env = Environment()
         env.push(1)
         env.set((0, 0), IntegerValue(42))
 
-        # with 'a := 42', run the function to change the environment and it should still affect the outer scope
-        a1 = program.declarations[0].body.lvalue
-        a1.level, a1.index = 2, 0
-
+        # run the function to change the environment and it should still affect the outer scope
         program.evaluate(env)
 
         self.assertEqual(IntegerValue(99), env.get((0, 0)))
