@@ -5,7 +5,6 @@ from src.ast import NativeFunctionDeclaration, FunctionParameter, TypeId, Intege
 from src.environment import Environment
 from src.test.util import parse_file, list_test_files, get_file_name, read_file
 
-
 # note: this may be helpful for testing larger recursion depths
 sys.setrecursionlimit(10000)
 
@@ -33,7 +32,8 @@ def generate_print_test(path):
                 raise ValueError('Unknown value type ' + str(s))
 
         env = Environment()
-        env.set('print', NativeFunctionDeclaration('print', [FunctionParameter('s', TypeId('str'))], None, tiger_print))
+        env.push(1)
+        env.set((0, 0), NativeFunctionDeclaration('print', [FunctionParameter('s', TypeId('str'))], None, tiger_print))
 
         program.evaluate(env)
 

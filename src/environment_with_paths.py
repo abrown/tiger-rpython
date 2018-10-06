@@ -64,8 +64,8 @@ class Environment(EnvironmentInterface):
 
     def push(self, number_of_names):
         """Create a new environment level (i.e. frame)"""
-        self.local_variables = EnvironmentLevel(self.local_variables, number_of_names)
-        self.local_types = EnvironmentLevel(self.local_types, 0)  # TODO currently not tracking types
+        self.local_variables = EnvironmentLevel(self.local_variables, number_of_names)  # TODO should be (total - types)
+        self.local_types = EnvironmentLevel(self.local_types, number_of_names)  # TODO should be (total - variables)
 
     def pop(self):
         """Remove and forget the topmost environment level (i.e. frame)"""

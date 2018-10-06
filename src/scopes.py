@@ -1,15 +1,19 @@
-from src.ast import Exp, Sequence, FunctionDeclaration, FunctionCall, Let, BinaryOperation, LValue, Program, \
-    VariableDeclaration
+from src.ast import Exp, Sequence, FunctionDeclaration, FunctionCall, Let, BinaryOperation, LValue, Program, RecordType, \
+    ArrayType, TypeDeclaration, RecordLValue, ArrayLValue, ArrayCreation, VariableDeclaration, For, While, If, Assign
+
+NATIVE_FUNCTION_NAMES = [
+    'print'
+]
 
 
-def transform_lvalues(exp):
+def transform_lvalues(exp, existing_names=None):
     """
     :param exp: the root expression of an AST
     :return: nothing, but alter each LValue in the AST to contain a path to its declaration
     """
     assert isinstance(exp, Exp)
 
-    transformer = LValueTransformer()
+    transformer = LValueTransformer(existing_names or NATIVE_FUNCTION_NAMES)
     for node in DepthFirstAstIterator(exp):
         transformer.transform(node)
 
@@ -77,6 +81,23 @@ class DepthFirstAstIterator:
         elif isinstance(expression, BinaryOperation):
             self.push_one(expression.right)
             self.push_one(expression.left)
+        elif isinstance(expression, VariableDeclaration):
+            self.push_one(expression.exp)
+        elif isinstance(expression, ArrayCreation):
+            self.push_one(expression.initial_value_expression)
+            self.push_one(expression.length_expression)
+        elif isinstance(expression, For):
+            self.push_one(expression.while_expression)  # this should be body but For() has been converted to a While
+        elif isinstance(expression, While):
+            self.push_one(expression.body)
+            self.push_one(expression.condition)
+        elif isinstance(expression, If):
+            self.push_one(expression.body_if_false)
+            self.push_one(expression.body_if_true)
+            self.push_one(expression.condition)
+        elif isinstance(expression, Assign):
+            self.push_one(expression.expression)
+            self.push_one(expression.lvalue)
 
     def push_one(self, expression):
         assert not isinstance(expression, list)
@@ -96,33 +117,53 @@ class LValueTransformer:
     maintains state--the observed scopes as the AST is traversed in depth-first fashion
     """
 
-    def __init__(self):
-        self.scopes = []
+    def __init__(self, existing_names=None):
+        self.variable_scopes = [] or [existing_names]
+        assert isinstance(self.variable_scopes, list)
+        self.type_scopes = []
+        assert isinstance(self.variable_scopes, list)
 
     def transform(self, node):
         if isinstance(node, Let):
-            names = []
-            i = 0
+            variables = []
+            types = []
+
+            # TODO need to separate out type declarations and binding declarations
             for i in range(len(node.declarations)):
                 declaration = node.declarations[i]
-                declaration.index = i
-                names.append(declaration.name)
-            self.scopes.append(names)
+                if isinstance(declaration, TypeDeclaration):
+                    declaration.index = len(types)
+                    types.append(declaration.name)
+                else:
+                    declaration.index = len(variables)
+                    variables.append(declaration.name)
+
+            self.variable_scopes.append(variables)
+            self.type_scopes.append(types)
+
         elif isinstance(node, FunctionDeclaration):
             names = [parameter.name for parameter in node.parameters]
             names.insert(0, node.name)
-            self.scopes.append(names)
+            self.variable_scopes.append(names)
+            self.type_scopes.append([])
         elif isinstance(node, LValue):
-            node.level, node.index = self.find(node.name)
+            node.level, node.index = self.find_variable(node.name)
         elif isinstance(node, FunctionCall):
-            node.level, node.index = self.find(node.name)
+            node.level, node.index = self.find_variable(node.name)
         elif isinstance(node, ExitScope):
-            self.scopes.pop()
+            self.variable_scopes.pop()
+            self.type_scopes.pop()
 
-    def find(self, name):
-        for level in range(len(self.scopes)):
-            scope = self.scopes[len(self.scopes) - (level + 1)]
+    def find_variable(self, name):
+        return self.find(name, self.variable_scopes)
+
+    def find_type(self, name):
+        return self.find(name, self.type_scopes)
+
+    def find(self, name, scopes):
+        for level in range(len(scopes)):
+            scope = scopes[len(scopes) - (level + 1)]
             for index in range(len(scope)):
                 if scope[index] == name:
                     return level, index
-        raise ScopeError('Unable to find the used name %s in the enclosing scopes' % name)
+        raise ScopeError('Unable to find the name %s in the enclosing scopes' % name)

@@ -1,5 +1,6 @@
 let
   type iarray = array of int
+  var x := 42
   var l := 3
   var a := iarray [l] of 0
 in

@@ -3,6 +3,11 @@ class EnvironmentInterface:
     Un-pythonic attempt to define the interface for environments (i.e. scopes)
     """
 
+    """
+    Set to true to enable debug printing during evaluation
+    """
+    debug = False
+
     def push(self, number_of_names):
         """
         Create a new environment level (i.e. frame)

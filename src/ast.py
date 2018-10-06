@@ -238,7 +238,7 @@ class RecordCreation(Exp):
                and dict_equals(self.fields, other.fields)
 
     def evaluate(self, env):
-        type = env.get(self.type_id.name, env.local_types)
+        type = env.get((self.type_id.level, self.type_id.index), env.local_types)
         assert (isinstance(type, RecordType))
         values = [None] * len(type.field_types)
         index = 0
@@ -271,8 +271,10 @@ class RecordValue(Value):
 class TypeId(Declaration):
     _immutable_ = True
 
-    def __init__(self, name):
+    def __init__(self, name, level=0, index=0):
         Declaration.__init__(self, name)
+        self.level = level
+        self.index = index
 
     def to_string(self):
         return '%s(name=%s)' % (self.__class__.__name__, self.name)
@@ -291,8 +293,8 @@ class LValue(Exp):
         self.index = index
 
     def to_string(self):
-        return '%s(name=%s, next=%s)' % (
-            self.__class__.__name__, self.name, nullable_to_string(self.next))
+        return '%s(name=%s, next=%s, level=%s, index=%s)' % (
+            self.__class__.__name__, self.name, nullable_to_string(self.next), self.level, self.index)
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
@@ -358,7 +360,8 @@ class FunctionCall(Exp):
         self.index = index
 
     def to_string(self):
-        return '%s(name=%s, args=%s)' % (self.__class__.__name__, self.name, list_to_string(self.arguments))
+        return '%s(name=%s, level=%d, index=%d, args=%s)' % (
+        self.__class__.__name__, self.name, self.level, self.index, list_to_string(self.arguments))
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
@@ -380,7 +383,7 @@ class FunctionCall(Exp):
         frame = declaration.environment.clone()
         frame.push(len(declaration.parameters) + 1)
 
-        frame.set((0,0), declaration)
+        frame.set((0, 0), declaration)
 
         # evaluate arguments
         value = None
@@ -511,9 +514,8 @@ class For(Exp):
             other.start) and self.end.equals(other.end) and self.body.equals(other.body)
 
     def convert_to_while(self):
-        return Sequence([
-            # var iterator := start
-            Assign(LValue(self.var), self.start),
+        # var iterator := start
+        return Let([VariableDeclaration(self.var, None, self.start)], [
             # while iterator <= end:
             While(
                 LessThanOrEquals(LValue(self.var), self.end),
@@ -526,9 +528,7 @@ class For(Exp):
         ])
 
     def evaluate(self, env):
-        env.push(0)  # TODO this may not work any more
         self.while_expression.evaluate(env)
-        env.pop()
         return None
 
 
@@ -581,9 +581,10 @@ class Let(Exp):
 class TypeDeclaration(Declaration):
     _immutable_ = True
 
-    def __init__(self, name, type):
+    def __init__(self, name, type, index=0):
         Declaration.__init__(self, name)
         self.type = type
+        self.index = index
 
     def to_string(self):
         return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, self.type.to_string())
@@ -592,7 +593,7 @@ class TypeDeclaration(Declaration):
         return RPythonizedObject.equals(self, other) and self.name == other.name and self.type.equals(other.type)
 
     def evaluate(self, env):
-        env.set_current_level(self.name, self.type, env.local_types)
+        env.set((0, self.index), self.type, env.local_types)
 
 
 class VariableDeclaration(Declaration):
@@ -865,3 +866,34 @@ class Or(BinaryOperation):
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int or right_int else IntegerValue(0)
+
+
+def inject_logging_into_evaluate_methods():
+    """
+    In order to avoid cluttering the AST implementation with logging calls, this function will:
+    1. examine all classes in this module
+    2. if the class has an 'evaluate' attribute, replace it with a wrapper to print the string representation of the
+    AST node
+    :return: nothing
+    """
+    import sys
+    import inspect
+    from functools import wraps
+
+    def wrapper(method):
+        @wraps(method)
+        def wrapped(*args, **kwrds):
+            self = args[0]
+            env = args[1]
+            if env and hasattr(env, 'debug') and env.debug:
+                print(self.to_string())
+            return method(*args, **kwrds)
+
+        return wrapped
+
+    for name, klass in inspect.getmembers(sys.modules[__name__], inspect.isclass):
+        if 'evaluate' in klass.__dict__:
+            # print('Replacing evaluate method of %s' % klass)
+            setattr(klass, 'evaluate', wrapper(klass.__dict__['evaluate']))
+
+# inject_logging_into_evaluate_methods()
