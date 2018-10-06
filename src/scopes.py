@@ -1,6 +1,6 @@
 from src.ast import Exp, Sequence, FunctionDeclaration, FunctionCall, Let, BinaryOperation, LValue, Program, \
     TypeDeclaration, ArrayCreation, VariableDeclaration, For, While, If, Assign, \
-    RecordCreation
+    RecordCreation, ArrayLValue, RecordLValue
 
 NATIVE_FUNCTION_NAMES = [
     'print'
@@ -104,6 +104,8 @@ class DepthFirstAstIterator:
         elif isinstance(expression, LValue):
             if expression.next:
                 self.push_one(expression.next)
+            if isinstance(expression, ArrayLValue):
+                self.push_one(expression.exp)
 
     def push_one(self, expression):
         assert not isinstance(expression, list)
@@ -153,7 +155,14 @@ class LValueTransformer:
             self.variable_scopes.append(names)
             self.type_scopes.append([])
         elif isinstance(node, LValue):
-            node.level, node.index = self.find_variable(node.name)
+            if isinstance(node, ArrayLValue):
+                # if an expression is used to index into the array, it will be transformed as we iterate over the tree
+                pass
+            elif isinstance(node, RecordLValue):
+                # TODO eventually store records as arrays and index into the array here
+                pass
+            else:
+                node.level, node.index = self.find_variable(node.name)
         elif isinstance(node, FunctionCall):
             node.level, node.index = self.find_variable(node.name)
         elif isinstance(node, ExitScope):

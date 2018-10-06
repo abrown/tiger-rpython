@@ -71,15 +71,18 @@ class InterpretationError(Exception):
 
 
 class Program(RPythonizedObject):
+    """
+    Tiger programs have three types of AST nodes: expressions, declarations, and types
+    """
     _immutable_ = True
 
     def evaluate(self, env):
         pass
-        # TODO implement in sub-classes
+        # this must be implemented in sub-classes
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other)
-        # TODO implement in sub-classes
+        # this should be implemented in sub-classes
 
 
 class Exp(Program):
@@ -90,8 +93,9 @@ class Exp(Program):
 class Declaration(Program):
     _immutable_ = True
 
-    def __init__(self, name):
+    def __init__(self, name, index=0):
         self.name = name
+        self.index = index
 
     def evaluate(self, env):
         env.set_current_level(self.name, self)
@@ -99,8 +103,10 @@ class Declaration(Program):
 
 class Type(Program):
     _immutable_ = True
-
     pass
+
+
+# VALUES
 
 
 class Value(Exp):
@@ -172,37 +178,6 @@ class StringValue(Value):
         return RPythonizedObject.equals(self, other) and self.string == other.string
 
 
-class ArrayCreation(Exp):
-    _immutable_ = True
-
-    def __init__(self, type, length, initial_value):
-        assert (isinstance(length, Exp))
-        self.length_expression = length
-        assert (isinstance(initial_value, Exp))
-        self.initial_value_expression = initial_value
-        assert (isinstance(type, TypeId))
-        self.type_id = type
-
-    def to_string(self):
-        return '%s(initial_value=%s, length=%s, type=%s)' % (
-            self.__class__.__name__, self.initial_value_expression.to_string(), self.length_expression.to_string(),
-            self.type_id.to_string())
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.initial_value_expression.equals(
-            other.initial_value_expression) and self.length_expression.equals(
-            other.length_expression) and self.type_id.equals(other.type_id)
-
-    def evaluate(self, env):
-        length = self.length_expression.evaluate(env)
-        assert (isinstance(length, IntegerValue))
-        initial_value = self.initial_value_expression.evaluate(env)
-        assert (isinstance(initial_value, Value))
-        # TODO type-check
-        #type = env.get(self.type_id.name, env.local_types)
-        return ArrayValue(length.integer, initial_value)
-
-
 class ArrayValue(Value):
     _immutable_ = True
 
@@ -218,36 +193,6 @@ class ArrayValue(Value):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.length == other.length and list_equals(self.array,
                                                                                                      other.array)
-
-
-class RecordCreation(Exp):
-    _immutable_ = True
-
-    def __init__(self, type, fields):
-        assert (isinstance(type, TypeId))
-        self.type_id = type
-        # assert (isinstance(fields, dict))
-        self.fields = fields
-
-    def to_string(self):
-        return '%s(type=%s, fields=%s)' % (
-            self.__class__.__name__, self.type_id.to_string(), dict_to_string(self.fields))
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.type_id.equals(other.type_id) \
-               and dict_equals(self.fields, other.fields)
-
-    def evaluate(self, env):
-        type = env.get((self.type_id.level, self.type_id.index), env.local_types)
-        assert (isinstance(type, RecordType))
-        values = [None] * len(type.field_types)
-        index = 0
-        for field in type.field_types:
-            value = self.fields[field].evaluate(env)
-            values[index] = value
-            index += 1
-        assert (len(type.field_types) == len(values))
-        return RecordValue(type, values)
 
 
 class RecordValue(Value):
@@ -268,19 +213,7 @@ class RecordValue(Value):
                                                                                                       other.values)
 
 
-class TypeId(Declaration):
-    _immutable_ = True
-
-    def __init__(self, name, level=0, index=0):
-        Declaration.__init__(self, name)
-        self.level = level
-        self.index = index
-
-    def to_string(self):
-        return '%s(name=%s)' % (self.__class__.__name__, self.name)
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name
+# EXPRESSIONS: LOCATORS AND STRUCTURE
 
 
 class LValue(Exp):
@@ -349,6 +282,149 @@ class ArrayLValue(LValue):
                and nullable_equals(self.next, other.next)
 
 
+class ArrayCreation(Exp):
+    _immutable_ = True
+
+    def __init__(self, type, length, initial_value):
+        assert (isinstance(length, Exp))
+        self.length_expression = length
+        assert (isinstance(initial_value, Exp))
+        self.initial_value_expression = initial_value
+        assert (isinstance(type, TypeId))
+        self.type_id = type
+
+    def to_string(self):
+        return '%s(initial_value=%s, length=%s, type=%s)' % (
+            self.__class__.__name__, self.initial_value_expression.to_string(), self.length_expression.to_string(),
+            self.type_id.to_string())
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.initial_value_expression.equals(
+            other.initial_value_expression) and self.length_expression.equals(
+            other.length_expression) and self.type_id.equals(other.type_id)
+
+    def evaluate(self, env):
+        length = self.length_expression.evaluate(env)
+        assert (isinstance(length, IntegerValue))
+        initial_value = self.initial_value_expression.evaluate(env)
+        assert (isinstance(initial_value, Value))
+        # TODO type-check
+        # type = env.get(self.type_id.name, env.local_types)
+        return ArrayValue(length.integer, initial_value)
+
+
+class RecordCreation(Exp):
+    _immutable_ = True
+
+    def __init__(self, type, fields):
+        assert (isinstance(type, TypeId))
+        self.type_id = type
+        # assert (isinstance(fields, dict))
+        self.fields = fields
+
+    def to_string(self):
+        return '%s(type=%s, fields=%s)' % (
+            self.__class__.__name__, self.type_id.to_string(), dict_to_string(self.fields))
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.type_id.equals(other.type_id) \
+               and dict_equals(self.fields, other.fields)
+
+    def evaluate(self, env):
+        type = env.get((self.type_id.level, self.type_id.index), env.local_types)
+        assert (isinstance(type, RecordType))
+        values = [None] * len(type.field_types)
+        index = 0
+        for field in type.field_types:
+            value = self.fields[field].evaluate(env)
+            values[index] = value
+            index += 1
+        assert (len(type.field_types) == len(values))
+        return RecordValue(type, values)
+
+
+# EXPRESSIONS: STATEMENTS
+
+
+class Assign(Exp):
+    _immutable_ = True
+
+    def __init__(self, lvalue, expression):
+        self.lvalue = lvalue
+        self.expression = expression
+
+    def to_string(self):
+        return '%s(lvalue=%s, expression=%s)' % (
+            self.__class__.__name__, self.lvalue.to_string(), self.expression.to_string())
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.expression.equals(
+            other.expression)
+
+    def evaluate(self, env):
+        # TODO handle other types of lvalues
+        value = self.expression.evaluate(env)
+        env.set((self.lvalue.level, self.lvalue.index), value)
+
+
+class Sequence(Exp):
+    _immutable_ = True
+
+    def __init__(self, expressions):
+        self.expressions = expressions
+
+    def to_string(self):
+        return '%s(expressions=%s)' % (self.__class__.__name__, list_to_string(self.expressions))
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and list_equals(self.expressions, other.expressions)
+
+    @unroll_safe
+    def evaluate(self, env):
+        value = None
+        for expression in self.expressions:
+            value = expression.evaluate(env)
+        return value
+
+
+class Let(Exp):
+    _immutable_ = True
+
+    def __init__(self, declarations, expressions):
+        self.declarations = declarations
+        self.expressions = expressions
+
+    def to_string(self):
+        return '%s(declarations=%s, expressions=%s)' % (
+            self.__class__.__name__, list_to_string(self.declarations), list_to_string(self.expressions))
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) \
+               and list_equals(self.declarations, other.declarations) \
+               and list_equals(self.expressions, other.expressions)
+
+    @unroll_safe
+    def evaluate(self, env):
+        if not env:  # not isinstance(env, Environment):
+            raise InterpretationError('No environment in %s' % self.to_string())
+
+        env.push(len(self.declarations))
+
+        for declaration in self.declarations:
+            assert isinstance(declaration, Declaration)
+            declaration.evaluate(env)
+        value = None
+        for expression in self.expressions:
+            value = expression.evaluate(env)
+
+        env.pop()
+
+        return value
+
+
+# EXPRESSIONS: CONTROL FLOW
+
+
 class FunctionCall(Exp):
     _immutable_ = True
 
@@ -361,7 +437,7 @@ class FunctionCall(Exp):
 
     def to_string(self):
         return '%s(name=%s, level=%d, index=%d, args=%s)' % (
-        self.__class__.__name__, self.name, self.level, self.index, list_to_string(self.arguments))
+            self.__class__.__name__, self.name, self.level, self.index, list_to_string(self.arguments))
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
@@ -410,27 +486,6 @@ class FunctionCall(Exp):
             raise InterpretationError('Unknown function type: %s' % declaration.__class__.__name__)
 
         return result
-
-
-class Assign(Exp):
-    _immutable_ = True
-
-    def __init__(self, lvalue, expression):
-        self.lvalue = lvalue
-        self.expression = expression
-
-    def to_string(self):
-        return '%s(lvalue=%s, expression=%s)' % (
-            self.__class__.__name__, self.lvalue.to_string(), self.expression.to_string())
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.expression.equals(
-            other.expression)
-
-    def evaluate(self, env):
-        # TODO handle other types of lvalues
-        value = self.expression.evaluate(env)
-        env.set((self.lvalue.level, self.lvalue.index), value)
 
 
 class If(Exp):
@@ -543,203 +598,7 @@ class BreakException(Exception):
     pass
 
 
-class Let(Exp):
-    _immutable_ = True
-
-    def __init__(self, declarations, expressions):
-        self.declarations = declarations
-        self.expressions = expressions
-
-    def to_string(self):
-        return '%s(declarations=%s, expressions=%s)' % (
-            self.__class__.__name__, list_to_string(self.declarations), list_to_string(self.expressions))
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) \
-               and list_equals(self.declarations, other.declarations) \
-               and list_equals(self.expressions, other.expressions)
-
-    @unroll_safe
-    def evaluate(self, env):
-        if not env:  # not isinstance(env, Environment):
-            raise InterpretationError('No environment in %s' % self.to_string())
-
-        env.push(len(self.declarations))
-
-        for declaration in self.declarations:
-            assert isinstance(declaration, Declaration)
-            declaration.evaluate(env)
-        value = None
-        for expression in self.expressions:
-            value = expression.evaluate(env)
-
-        env.pop()
-
-        return value
-
-
-class TypeDeclaration(Declaration):
-    _immutable_ = True
-
-    def __init__(self, name, type, index=0):
-        Declaration.__init__(self, name)
-        self.type = type
-        self.index = index
-
-    def to_string(self):
-        return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, self.type.to_string())
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name and self.type.equals(other.type)
-
-    def evaluate(self, env):
-        env.set((0, self.index), self.type, env.local_types)
-
-
-class VariableDeclaration(Declaration):
-    _immutable_ = True
-
-    def __init__(self, name, type, exp, index=0):
-        Declaration.__init__(self, name)
-        self.type = type
-        self.exp = exp
-        self.index = 0
-
-    def to_string(self):
-        return '%s(name=%s, type=%s, exp=%s)' % (
-            self.__class__.__name__, self.name, nullable_to_string(self.type), self.exp.to_string())
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name \
-               and nullable_equals(self.type, other.type) and self.exp.equals(other.exp)
-
-    def evaluate(self, env):
-        value = self.exp.evaluate(env)
-        # TODO type-check
-        env.set((0, self.index), value)
-
-
-class FunctionParameter(Declaration):
-    _immutable_ = True
-
-    def __init__(self, name, type=None):
-        Declaration.__init__(self, name)
-        self.name = name
-        assert isinstance(type, TypeId) or type is None
-        self.type = type
-
-    def to_string(self):
-        return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, nullable_to_string(self.type))
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name \
-               and nullable_equals(self.type, other.type)
-
-
-class FunctionDeclaration(Declaration):
-    _immutable_ = True
-
-    def __init__(self, name, parameters, return_type, body, environment=None, index=0):
-        Declaration.__init__(self, name)
-        assert isinstance(parameters, list)
-        self.parameters = parameters
-        assert isinstance(return_type, TypeId) or return_type is None
-        self.return_type = return_type
-        assert isinstance(body, Exp)
-        self.body = body
-        self.environment = environment or Environment()  # to be reset when the function declaration is evaluated
-        self.index = index
-
-    def to_string(self):
-        return '%s(name=%s, parameters=%s, return_type=%s, body=%s)' % (
-            self.__class__.__name__, self.name, list_to_string(self.parameters), nullable_to_string(self.return_type),
-            self.body.to_string())
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name \
-               and list_equals(self.parameters, other.parameters) \
-               and nullable_equals(self.return_type, other.return_type) \
-               and self.body.equals(other.body)
-
-    def evaluate(self, env):
-        assert (env is not None)
-        env.set((0, self.index), self)
-        self.environment = env.clone()
-
-
-class NativeFunctionDeclaration(Declaration):
-    _immutable_ = True
-
-    def __init__(self, name, parameters=None, return_type=None, function_=None):
-        Declaration.__init__(self, name)
-        self.parameters = parameters or []
-        assert isinstance(self.parameters, list)
-        assert isinstance(return_type, TypeId) or return_type is None
-        self.return_type = return_type
-        self.function = function_
-        self.environment = Environment()  # native functions cannot touch the interpreter environment
-
-    def to_string(self):
-        return '%s(name=%s, parameters=%s, return_type=%s)' % (
-            self.__class__.__name__, self.name, list_to_string(self.parameters), nullable_to_string(self.return_type))
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name \
-               and list_equals(self.parameters, other.parameters) \
-               and nullable_equals(self.return_type, other.return_type)
-
-
-class ArrayType(Type):
-    _immutable_ = True
-
-    def __init__(self, element_type):
-        self.type_name = element_type
-
-    def to_string(self):
-        return '%s(type_name=%s)' % (self.__class__.__name__, self.type_name)
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.type_name == other.type_name
-
-
-class RecordType(Type):
-    _immutable_ = True
-
-    def __init__(self, field_types):
-        # assert (isinstance(field_types, dict))
-        self.field_types = field_types
-        self.field_positions = {}
-        index = 0
-        for field in field_types:
-            self.field_positions[field] = index
-            index += 1
-
-    def to_string(self):
-        _immutable_ = True
-        return '%s(field_types=%s)' % (self.__class__.__name__, dict_to_string(self.field_types))
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and dict_equals(self.field_types, other.field_types)
-
-
-class Sequence(Exp):
-    _immutable_ = True
-
-    def __init__(self, expressions):
-        self.expressions = expressions
-
-    def to_string(self):
-        return '%s(expressions=%s)' % (self.__class__.__name__, list_to_string(self.expressions))
-
-    def equals(self, other):
-        return RPythonizedObject.equals(self, other) and list_equals(self.expressions, other.expressions)
-
-    @unroll_safe
-    def evaluate(self, env):
-        value = None
-        for expression in self.expressions:
-            value = expression.evaluate(env)
-        return value
+# EXPRESSIONS: LOGICAL AND ARITHMETIC OPERATORS
 
 
 class BinaryOperation(Exp):
@@ -866,6 +725,171 @@ class Or(BinaryOperation):
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int or right_int else IntegerValue(0)
+
+
+# DECLARATIONS
+
+
+class TypeId(Declaration):
+    _immutable_ = True
+
+    def __init__(self, name, level=0, index=0):
+        Declaration.__init__(self, name)
+        self.level = level
+        self.index = index
+
+    def to_string(self):
+        return '%s(name=%s)' % (self.__class__.__name__, self.name)
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.name == other.name
+
+
+class TypeDeclaration(Declaration):
+    _immutable_ = True
+
+    def __init__(self, name, type, index=0):
+        Declaration.__init__(self, name)
+        self.type = type
+        self.index = index
+
+    def to_string(self):
+        return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, self.type.to_string())
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.name == other.name and self.type.equals(other.type)
+
+    def evaluate(self, env):
+        env.set((0, self.index), self.type, env.local_types)
+
+
+class VariableDeclaration(Declaration):
+    _immutable_ = True
+
+    def __init__(self, name, type, exp, index=0):
+        Declaration.__init__(self, name)
+        self.type = type
+        self.exp = exp
+        self.index = 0
+
+    def to_string(self):
+        return '%s(name=%s, type=%s, exp=%s)' % (
+            self.__class__.__name__, self.name, nullable_to_string(self.type), self.exp.to_string())
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.name == other.name \
+               and nullable_equals(self.type, other.type) and self.exp.equals(other.exp)
+
+    def evaluate(self, env):
+        value = self.exp.evaluate(env)
+        # TODO type-check
+        env.set((0, self.index), value)
+
+
+class FunctionParameter(Declaration):
+    _immutable_ = True
+
+    def __init__(self, name, type=None):
+        Declaration.__init__(self, name)
+        self.name = name
+        assert isinstance(type, TypeId) or type is None
+        self.type = type
+
+    def to_string(self):
+        return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, nullable_to_string(self.type))
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.name == other.name \
+               and nullable_equals(self.type, other.type)
+
+
+class FunctionDeclaration(Declaration):
+    _immutable_ = True
+
+    def __init__(self, name, parameters, return_type, body, environment=None, index=0):
+        Declaration.__init__(self, name)
+        assert isinstance(parameters, list)
+        self.parameters = parameters
+        assert isinstance(return_type, TypeId) or return_type is None
+        self.return_type = return_type
+        assert isinstance(body, Exp)
+        self.body = body
+        self.environment = environment or Environment()  # to be reset when the function declaration is evaluated
+        self.index = index
+
+    def to_string(self):
+        return '%s(name=%s, parameters=%s, return_type=%s, body=%s)' % (
+            self.__class__.__name__, self.name, list_to_string(self.parameters), nullable_to_string(self.return_type),
+            self.body.to_string())
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.name == other.name \
+               and list_equals(self.parameters, other.parameters) \
+               and nullable_equals(self.return_type, other.return_type) \
+               and self.body.equals(other.body)
+
+    def evaluate(self, env):
+        assert (env is not None)
+        env.set((0, self.index), self)
+        self.environment = env.clone()
+
+
+class NativeFunctionDeclaration(Declaration):
+    _immutable_ = True
+
+    def __init__(self, name, parameters=None, return_type=None, function_=None):
+        Declaration.__init__(self, name)
+        self.parameters = parameters or []
+        assert isinstance(self.parameters, list)
+        assert isinstance(return_type, TypeId) or return_type is None
+        self.return_type = return_type
+        self.function = function_
+        self.environment = Environment()  # native functions cannot touch the interpreter environment
+
+    def to_string(self):
+        return '%s(name=%s, parameters=%s, return_type=%s)' % (
+            self.__class__.__name__, self.name, list_to_string(self.parameters), nullable_to_string(self.return_type))
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.name == other.name \
+               and list_equals(self.parameters, other.parameters) \
+               and nullable_equals(self.return_type, other.return_type)
+
+
+# TYPES
+
+
+class ArrayType(Type):
+    _immutable_ = True
+
+    def __init__(self, element_type):
+        self.type_name = element_type
+
+    def to_string(self):
+        return '%s(type_name=%s)' % (self.__class__.__name__, self.type_name)
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and self.type_name == other.type_name
+
+
+class RecordType(Type):
+    _immutable_ = True
+
+    def __init__(self, field_types):
+        # assert (isinstance(field_types, dict))
+        self.field_types = field_types
+        self.field_positions = {}
+        index = 0
+        for field in field_types:
+            self.field_positions[field] = index
+            index += 1
+
+    def to_string(self):
+        _immutable_ = True
+        return '%s(field_types=%s)' % (self.__class__.__name__, dict_to_string(self.field_types))
+
+    def equals(self, other):
+        return RPythonizedObject.equals(self, other) and dict_equals(self.field_types, other.field_types)
 
 
 def inject_logging_into_evaluate_methods():

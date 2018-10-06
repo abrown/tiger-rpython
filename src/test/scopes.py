@@ -63,7 +63,7 @@ class TestScopeTransformations(unittest.TestCase):
         program = self.to_program('a[b].c', False)
         nodes = self.ast_to_list(program)
 
-        self.assertListTypesEqual([LValue, ArrayLValue, RecordLValue], nodes)
+        self.assertListTypesEqual([LValue, ArrayLValue, LValue, RecordLValue], nodes)
 
     def test_let(self):
         program = self.to_program("let var x := 42 in x + 42 end")
