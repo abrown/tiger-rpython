@@ -456,23 +456,21 @@ class FunctionCall(Exp):
                 len(self.arguments), len(declaration.parameters), self.name))
 
         # use declaration environment for function call (note: push() allows us to reuse the frame)
-        frame = declaration.environment.clone()
-        frame.push(len(declaration.parameters) + 1)
-
-        frame.set((0, 0), declaration)
+        activation_environment = declaration.environment.clone()
+        activation_environment.push(len(declaration.parameters) + 1)
+        activation_environment.set((0, 0), declaration)
 
         # evaluate arguments
         value = None
         for i in range(len(self.arguments)):
-            name = declaration.parameters[i].name
             value = self.arguments[i].evaluate(env)
             assert (isinstance(value, Value))
-            frame.set((0, i + 1), value)
+            activation_environment.set((0, i + 1), value)
 
         # evaluate body
         result = None
         if isinstance(declaration, FunctionDeclaration):
-            result = declaration.body.evaluate(frame)
+            result = declaration.body.evaluate(activation_environment)
             # TODO type-check result
         elif isinstance(declaration, NativeFunctionDeclaration):
             # only one argument is allowed due to calling RPythonized functions with var-args
