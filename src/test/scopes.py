@@ -1,15 +1,14 @@
 import unittest
 
 from src.ast import LValue, Let, FunctionDeclaration, FunctionCall, VariableDeclaration, \
-    FunctionParameter, Add, IntegerValue, Declaration
+    FunctionParameter, Add, IntegerValue, Declaration, Assign, RecordCreation, StringValue, RecordLValue, ArrayLValue
 from src.parser import Parser
-from src.scopes import transform_lvalues, DepthFirstAstIterator, ExitScope
+from src.scopes import DepthFirstAstIterator, ExitScope
 
 
 class TestScopeTransformations(unittest.TestCase):
-    def to_program(self, text):
-        program = Parser(text).parse()
-        transform_lvalues(program)
+    def to_program(self, text, absolutize_lvalues=True):
+        program = Parser(text).parse(absolutize_lvalues)
         return program
 
     def ast_to_list(self, expression):
@@ -50,8 +49,21 @@ class TestScopeTransformations(unittest.TestCase):
 
         self.assertListTypesEqual([Let, VariableDeclaration, IntegerValue,
                                    Let, FunctionDeclaration, FunctionParameter, Add, LValue, LValue, ExitScope,
-                                   Let, VariableDeclaration, IntegerValue, FunctionCall, LValue, ExitScope, ExitScope, ExitScope],
+                                   Let, VariableDeclaration, IntegerValue, FunctionCall, LValue, ExitScope, ExitScope,
+                                   ExitScope],
                                   nodes)
+
+    def test_record_iteration(self):
+        program = self.to_program('r := rt {a = 42, b = "..."}', False)
+        nodes = self.ast_to_list(program)
+
+        self.assertListTypesEqual([Assign, LValue, RecordCreation, IntegerValue, StringValue], nodes)
+
+    def test_lvalue_iteration(self):
+        program = self.to_program('a[b].c', False)
+        nodes = self.ast_to_list(program)
+
+        self.assertListTypesEqual([LValue, ArrayLValue, RecordLValue], nodes)
 
     def test_let(self):
         program = self.to_program("let var x := 42 in x + 42 end")
