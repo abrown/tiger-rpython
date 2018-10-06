@@ -1,5 +1,6 @@
-from src.ast import Exp, Sequence, FunctionDeclaration, FunctionCall, Let, BinaryOperation, LValue, Program, RecordType, \
-    ArrayType, TypeDeclaration, RecordLValue, ArrayLValue, ArrayCreation, VariableDeclaration, For, While, If, Assign
+from src.ast import Exp, Sequence, FunctionDeclaration, FunctionCall, Let, BinaryOperation, LValue, Program, \
+    TypeDeclaration, ArrayCreation, VariableDeclaration, For, While, If, Assign, \
+    RecordCreation
 
 NATIVE_FUNCTION_NAMES = [
     'print'
@@ -86,6 +87,8 @@ class DepthFirstAstIterator:
         elif isinstance(expression, ArrayCreation):
             self.push_one(expression.initial_value_expression)
             self.push_one(expression.length_expression)
+        elif isinstance(expression, RecordCreation):
+            self.push_several(expression.fields.values())
         elif isinstance(expression, For):
             self.push_one(expression.while_expression)  # this should be body but For() has been converted to a While
         elif isinstance(expression, While):
@@ -98,6 +101,9 @@ class DepthFirstAstIterator:
         elif isinstance(expression, Assign):
             self.push_one(expression.expression)
             self.push_one(expression.lvalue)
+        elif isinstance(expression, LValue):
+            if expression.next:
+                self.push_one(expression.next)
 
     def push_one(self, expression):
         assert not isinstance(expression, list)
