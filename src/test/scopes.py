@@ -1,7 +1,8 @@
 import unittest
 
 from src.ast import LValue, Let, FunctionDeclaration, FunctionCall, VariableDeclaration, \
-    FunctionParameter, Add, IntegerValue, Declaration, Assign, RecordCreation, StringValue, RecordLValue, ArrayLValue
+    FunctionParameter, Add, IntegerValue, Declaration, Assign, RecordCreation, StringValue, RecordLValue, ArrayLValue, \
+    TypeId
 from src.parser import Parser
 from src.scopes import DepthFirstAstIterator, ExitScope
 
@@ -57,7 +58,7 @@ class TestScopeTransformations(unittest.TestCase):
         program = self.to_program('r := rt {a = 42, b = "..."}', False)
         nodes = self.ast_to_list(program)
 
-        self.assertListTypesEqual([Assign, LValue, RecordCreation, IntegerValue, StringValue], nodes)
+        self.assertListTypesEqual([Assign, LValue, RecordCreation, TypeId, IntegerValue, StringValue], nodes)
 
     def test_lvalue_iteration(self):
         program = self.to_program('a[b].c', False)

@@ -362,9 +362,47 @@ class Assign(Exp):
             other.expression)
 
     def evaluate(self, env):
-        # TODO handle other types of lvalues
         value = self.expression.evaluate(env)
-        env.set((self.lvalue.level, self.lvalue.index), value)
+
+        lvalue = self.lvalue
+        path = (lvalue.level, lvalue.index)
+        if not lvalue.next:
+            # assignment to a plain lvalue
+            env.set(path, value)
+        else:
+            # assignment to a sub-located destination
+            destination = env.get(path)
+            lvalue = lvalue.next
+
+            # traverse all locators except the last one
+            while lvalue and lvalue.next:
+                if isinstance(lvalue, ArrayLValue):
+                    assert isinstance(destination, ArrayValue)
+                    index = lvalue.exp.evaluate(env)
+                    assert isinstance(index, IntegerValue)
+                    destination = destination.array[index.integer]
+                elif isinstance(lvalue, RecordLValue):
+                    assert isinstance(destination, RecordValue)
+                    index = destination.type.field_positions[lvalue.name]
+                    assert isinstance(index, int)
+                    destination = destination.values[index]
+                else:
+                    raise InterpretationError('Incorrect AST; expected an array- or record-value')
+                lvalue = lvalue.next
+
+            # assign to the last locator
+            if isinstance(lvalue, ArrayLValue):
+                assert isinstance(destination, ArrayValue)
+                index = lvalue.exp.evaluate(env)
+                assert isinstance(index, IntegerValue)
+                destination.array[index.integer] = value
+            elif isinstance(lvalue, RecordLValue):
+                assert isinstance(destination, RecordValue)
+                index = destination.type.field_positions[lvalue.name]
+                assert isinstance(index, int)
+                destination.values[index] = value
+            else:
+                raise InterpretationError('Incorrect AST; expected an array- or record-value')
 
 
 class Sequence(Exp):
