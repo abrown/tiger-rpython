@@ -1,20 +1,24 @@
 from src.ast import Exp, Sequence, FunctionDeclaration, FunctionCall, Let, BinaryOperation, LValue, Program, \
     TypeDeclaration, ArrayCreation, VariableDeclaration, For, While, If, Assign, \
-    RecordCreation, ArrayLValue, RecordLValue
+    RecordCreation, ArrayLValue, RecordLValue, TypeId
 
 NATIVE_FUNCTION_NAMES = [
     'print'
 ]
 
+NATIVE_TYPES = [
+    'int'
+]
 
-def transform_lvalues(exp, existing_names=None):
+
+def transform_lvalues(exp, existing_names=None, existing_types=None):
     """
     :param exp: the root expression of an AST
     :return: nothing, but alter each LValue in the AST to contain a path to its declaration
     """
     assert isinstance(exp, Exp)
 
-    transformer = LValueTransformer(existing_names or NATIVE_FUNCTION_NAMES)
+    transformer = LValueTransformer(existing_names or NATIVE_FUNCTION_NAMES, existing_types or NATIVE_TYPES)
     for node in DepthFirstAstIterator(exp):
         transformer.transform(node)
 
@@ -82,13 +86,18 @@ class DepthFirstAstIterator:
         elif isinstance(expression, BinaryOperation):
             self.push_one(expression.right)
             self.push_one(expression.left)
+        elif isinstance(expression, TypeDeclaration):
+            self.push_one(expression.type)
         elif isinstance(expression, VariableDeclaration):
             self.push_one(expression.exp)
+            if expression.type:
+                self.push_one(expression.type)
         elif isinstance(expression, ArrayCreation):
             self.push_one(expression.initial_value_expression)
             self.push_one(expression.length_expression)
         elif isinstance(expression, RecordCreation):
             self.push_several(expression.fields.values())
+            self.push_one(expression.type_id)
         elif isinstance(expression, For):
             self.push_one(expression.while_expression)  # this should be body but For() has been converted to a While
         elif isinstance(expression, While):
@@ -125,10 +134,10 @@ class LValueTransformer:
     maintains state--the observed scopes as the AST is traversed in depth-first fashion
     """
 
-    def __init__(self, existing_names=None):
+    def __init__(self, existing_names=None, existing_types=None):
         self.variable_scopes = [] or [existing_names]
         assert isinstance(self.variable_scopes, list)
-        self.type_scopes = []
+        self.type_scopes = [] or [existing_types]
         assert isinstance(self.variable_scopes, list)
 
     def transform(self, node):
@@ -165,6 +174,8 @@ class LValueTransformer:
                 node.level, node.index = self.find_variable(node.name)
         elif isinstance(node, FunctionCall):
             node.level, node.index = self.find_variable(node.name)
+        elif isinstance(node, TypeId):
+            node.level, node.index = self.find_type(node.name)
         elif isinstance(node, ExitScope):
             self.variable_scopes.pop()
             self.type_scopes.pop()
