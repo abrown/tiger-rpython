@@ -39,10 +39,12 @@ class ScopeError(Exception):
         return self.to_string()
 
 
-class ExitScope:
+class ExitScope(Exp):
     """
     Used for marking when the depth-first iterator exits a scope
+    NOTE: this must subclass expression to satisfy RPython, not for any other reason.
     """
+    _immutable_ = True
 
     def __init__(self, expression):
         assert isinstance(expression, Program)

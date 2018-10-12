@@ -131,6 +131,9 @@ class Environment(EnvironmentInterface):
         assert isinstance(level, EnvironmentLevel)
 
         hops, index = path
+        assert isinstance(hops, int)
+        assert isinstance(index, int)
+
         while hops >= 0 and level:
             if hops == 0:
                 if not 0 <= index < len(level.expressions):

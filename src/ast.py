@@ -98,7 +98,7 @@ class Declaration(Program):
         self.index = index
 
     def evaluate(self, env):
-        env.set_current_level(self.name, self)
+        raise InterpretationError('Declaration evaluation must be overriden by subclasses')
 
 
 class Type(Program):
