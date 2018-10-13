@@ -39,9 +39,13 @@ benchmarks: binaries
 	$(foreach program, $(shell find src/benchmark/*.tig), ./src/benchmark/benchmark.sh $(program);)
 PHONY: benchmarks
 
-benchmarks-c:
+benchmarks-c-while:
 	gcc src/benchmark/while-parameterized.c -O0 -o bin/while-parameterized
 	time bin/while-parameterized 100000000
+
+benchmarks-c-sumprimes:
+	gcc src/benchmark/sumprimes.c -O0 -o bin/sumprimes
+	time bin/sumprimes 10000
 
 benchmarks-sumprimes: binaries
 	./src/benchmark/benchmark.sh src/benchmark/sumprimes-10k.tig
