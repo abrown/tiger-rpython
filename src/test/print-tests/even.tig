@@ -1,0 +1,11 @@
+let
+	function even(n:int) : int =
+		if n > 1 then even(n - 2)
+		else
+			if n = 1 then 0
+			else 1
+in
+	for i := 1 to 10 do
+	   if even(i) then
+	     (print(i); print("\n"))
+end
