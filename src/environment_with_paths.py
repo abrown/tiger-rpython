@@ -41,6 +41,7 @@ class EnvironmentLevel:
     _immutable_ = True
 
     def __init__(self, parent, number_of_names):
+        assert isinstance(number_of_names, int)
         self.parent = parent
         self.expressions = [None] * number_of_names  # indexed expressions
 
@@ -126,7 +127,7 @@ class Environment(EnvironmentInterface):
         be necessary so the levels are immune to updates from other sources)"""
         return Environment(self.local_variables, self.local_types)
 
-    @elidable
+    @unroll_safe
     def __locate__(self, path, level):
         assert isinstance(level, EnvironmentLevel)
 

@@ -361,6 +361,7 @@ class Assign(Exp):
         return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.expression.equals(
             other.expression)
 
+    @unroll_safe
     def evaluate(self, env):
         value = self.expression.evaluate(env)
 
@@ -575,6 +576,7 @@ class While(Exp):
         result = None
         while condition_value.integer != 0:
             jitdriver.jit_merge_point(code=self)
+            # attempted 'env = promote(env)' here but this let to incorrect number of inner loops in sumprimes
             try:
                 result = self.body.evaluate(env)
             except BreakException:
@@ -651,6 +653,7 @@ class BinaryOperation(Exp):
         return '%s(left=%s, right=%s)' % (self.__class__.__name__, self.left.to_string(), self.right.to_string())
 
     # TODO inline
+    @unroll_safe
     def evaluate_sides_to_value(self, env):
         left_value = self.left.evaluate(env)
         assert isinstance(left_value, Value)
@@ -659,6 +662,7 @@ class BinaryOperation(Exp):
         return left_value, right_value
 
     # TODO inline
+    @unroll_safe
     def evaluate_sides_to_int(self, env):
         left_value = self.left.evaluate(env)
         assert isinstance(left_value, IntegerValue)
@@ -686,6 +690,7 @@ class Divide(BinaryOperation):
 class Add(BinaryOperation):
     _immutable_ = True
 
+    @unroll_safe
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int + right_int)
