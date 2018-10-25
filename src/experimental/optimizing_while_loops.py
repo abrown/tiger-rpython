@@ -4,6 +4,7 @@ import interpretation_mechanisms
 # Begin RPython setup; catch import errors so this can still run in CPython...
 from src.ast import IntegerValue, BreakException, Let, VariableDeclaration, Sequence, LValue, Assign, While, LessThan, \
     Add
+from src.environment_with_paths import EnvironmentLevel
 from src.main.util import create_environment_with_natives
 from src.parser import Parser
 
@@ -239,6 +240,61 @@ class TestOptimizingWhileLoops(unittest.TestCase):
             return result.integer
 
         self.assertEqual(interpretation_mechanisms.meta_interpret(test, []), 328)
+
+    def test_virtualized_while_loop_changed_merge_point_with_virtualizable(self):
+        """
+        This is a (currently failed) attempt to virtualize the current level's local variables through the environment
+        display
+        """
+
+        # requires enabling _virtualizable_ in EnvironmentLevel
+        EnvironmentLevel._virtualizable_ = ['parent', 'expressions[*]']
+
+        # Environment._virtualizable_ = ['local_variables', 'local_types']
+
+        def get_location(code):
+            return "%s" % code.to_string()
+
+        jitdriver = JitDriver(greens=['code'], reds=['env', 'vars', 'result'], virtualizables=['vars'],
+                              get_printable_location=get_location)
+
+        class ModifiedWhile(While):
+            _immutable_ = True
+
+            def evaluate(self, env):
+                condition_value = self.condition.evaluate(env)
+                assert isinstance(condition_value, IntegerValue)
+
+                result = None
+                while condition_value.integer != 0:
+                    jitdriver.jit_merge_point(code=self, env=env, vars=env.local_variables, result=result)
+                    try:
+                        result = self.body.evaluate(env)
+                    except BreakException:
+                        break
+                    condition_value = self.condition.evaluate(env)
+
+                return result
+
+        def test():
+            # adding this line creates more jitcodes in /tmp/usession-exploration-abrown/jitcodes which reduces the number of operations
+            unused = Parser('let var a := 0 in (while a < 100 do a := a + 1) end').parse()
+
+            program = Let(declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
+                          expressions=[Sequence(
+                              expressions=[ModifiedWhile(condition=LessThan(left=LValue('a'), right=IntegerValue(100)),
+                                                         body=Assign(lvalue=LValue(name='a'),
+                                                                     expression=Add(
+                                                                         left=LValue(name='a'),
+                                                                         right=IntegerValue(1)))),
+                                           LValue(name='a', next=None)])])
+
+            environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
+            result = program.evaluate(environment)
+            assert isinstance(result, IntegerValue)
+            return result.integer
+
+        self.assertEqual(interpretation_mechanisms.meta_interpret(test, []), 100)
 
 
 if __name__ == '__main__':
