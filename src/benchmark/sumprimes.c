@@ -10,7 +10,7 @@ int main(int argc, const char* argv[]) {
     int max = atoi(argv[1]);
     int s = 0;
     int n = 2;
-    int i = 0;
+    // int i = 0;  // for counting the number of inner loops executed
 
     while (n <= max) {
         int p = 1;
@@ -21,14 +21,14 @@ int main(int argc, const char* argv[]) {
                 p = 0;
             }
             d += 1;
-            i += 1;
+            // i += 1;
         }
         if (p) {
             s += n;
         }
         n += 1;
     }
-    printf("%d\n", i);
+    // printf("%d\n", i);
     printf("%d\n", s);
 
 	return 0;
