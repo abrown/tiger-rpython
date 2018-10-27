@@ -49,8 +49,7 @@ def tiger_print(value):
 
 
 def create_environment_with_natives():
-    environment = Environment()
-    environment.push(1)
+    environment = Environment.empty().push(1)
     environment.set((0, 0), NativeFunctionDeclaration('print', [FunctionParameter('string', TypeId('string'))], None,
                                                       tiger_print))
     return environment

@@ -31,8 +31,7 @@ def generate_print_test(path):
             else:
                 raise ValueError('Unknown value type ' + str(s))
 
-        env = Environment()
-        env.push(1)
+        env = Environment.empty().push(1)
         env.set((0, 0), NativeFunctionDeclaration('print', [FunctionParameter('s', TypeId('str'))], None, tiger_print))
 
         program.evaluate(env)

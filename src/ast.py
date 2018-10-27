@@ -38,7 +38,8 @@ def get_location(code):
     return "%s" % code.to_string()
 
 
-jitdriver = JitDriver(greens=['code'], reds='auto', get_printable_location=get_location)
+jitdriver = JitDriver(greens=['code'], reds=['env', 'result', 'value'], get_printable_location=get_location)
+#jitdriver = JitDriver(greens=['code'], reds=['env', 'result', 'value'], virtualizables=['env'], get_printable_location=get_location)
 
 
 def jitpolicy(driver):
@@ -331,7 +332,7 @@ class RecordCreation(Exp):
                and dict_equals(self.fields, other.fields)
 
     def evaluate(self, env):
-        type = env.get((self.type_id.level, self.type_id.index), env.local_types)
+        type = env.get_type((self.type_id.level, self.type_id.index))
         assert (isinstance(type, RecordType))
         values = [None] * len(type.field_types)
         index = 0
@@ -447,7 +448,7 @@ class Let(Exp):
         if not env:  # not isinstance(env, Environment):
             raise InterpretationError('No environment in %s' % self.to_string())
 
-        env.push(len(self.declarations))
+        env = env.push(len(self.declarations))
 
         for declaration in self.declarations:
             assert isinstance(declaration, Declaration)
@@ -456,7 +457,7 @@ class Let(Exp):
         for expression in self.expressions:
             value = expression.evaluate(env)
 
-        env.pop()
+        #env = env.pop()  # unnecessary
 
         return value
 
@@ -496,7 +497,7 @@ class FunctionCall(Exp):
 
         # use declaration environment for function call (note: push() allows us to reuse the frame)
         activation_environment = declaration.environment.clone()
-        activation_environment.push(len(declaration.parameters) + 1)
+        activation_environment = activation_environment.push(len(declaration.parameters) + 1)
         activation_environment.set((0, 0), declaration)
 
         # evaluate arguments
@@ -575,7 +576,7 @@ class While(Exp):
 
         result = None
         while condition_value.integer != 0:
-            jitdriver.jit_merge_point(code=self)
+            jitdriver.jit_merge_point(code=self, env=env, result=result, value=condition_value)
             # attempted 'env = promote(env)' here but this let to incorrect number of inner loops in sumprimes
             try:
                 result = self.body.evaluate(env)
@@ -801,7 +802,7 @@ class TypeDeclaration(Declaration):
         return RPythonizedObject.equals(self, other) and self.name == other.name and self.type.equals(other.type)
 
     def evaluate(self, env):
-        env.set((0, self.index), self.type, env.local_types)
+        env.set_type((0, self.index), self.type)
 
 
 class VariableDeclaration(Declaration):
@@ -855,7 +856,8 @@ class FunctionDeclaration(Declaration):
         self.return_type = return_type
         assert isinstance(body, Exp)
         self.body = body
-        self.environment = environment or Environment()  # to be reset when the function declaration is evaluated
+        self.environment = Environment.empty()  # to be reset when the function declaration is evaluated
+        assert index >= 0
         self.index = index
 
     def to_string(self):
@@ -869,6 +871,7 @@ class FunctionDeclaration(Declaration):
                and nullable_equals(self.return_type, other.return_type) \
                and self.body.equals(other.body)
 
+    @unroll_safe
     def evaluate(self, env):
         assert (env is not None)
         env.set((0, self.index), self)
@@ -885,7 +888,7 @@ class NativeFunctionDeclaration(Declaration):
         assert isinstance(return_type, TypeId) or return_type is None
         self.return_type = return_type
         self.function = function_
-        self.environment = Environment()  # native functions cannot touch the interpreter environment
+        self.environment = Environment.empty() # native functions cannot touch the interpreter environment
 
     def to_string(self):
         return '%s(name=%s, parameters=%s, return_type=%s)' % (
