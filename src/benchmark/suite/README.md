@@ -1,0 +1,1 @@
+The Tiger benchmark applications in this directory were written by Vlad Vergu

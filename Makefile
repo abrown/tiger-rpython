@@ -36,19 +36,24 @@ bin/tiger-interpreter-no-jit: src/main/tiger_interpreter.py src/main/util.py $(s
 
 
 benchmarks: binaries
-	$(foreach program, $(shell find src/benchmark/*.tig), ./src/benchmark/benchmark.sh $(program);)
+	$(foreach program, $(shell find src/benchmark/*/*.tig), ./src/benchmark/benchmark.sh $(program);)
 PHONY: benchmarks
 
 benchmarks-c-while:
-	gcc src/benchmark/while-parameterized.c -O0 -o bin/while-parameterized
+	gcc src/benchmark/while_loop/while-parameterized.c -O0 -o bin/while-parameterized
 	time bin/while-parameterized 100000000
 
 benchmarks-c-sumprimes:
-	gcc src/benchmark/sumprimes.c -O0 -o bin/sumprimes
+	gcc src/benchmark/sumprimes/sumprimes.c -O0 -o bin/sumprimes
 	time bin/sumprimes 10000
 
 benchmarks-sumprimes: binaries
-	./src/benchmark/benchmark.sh src/benchmark/sumprimes-10k.tig
+	./src/benchmark/benchmark.sh src/benchmark/sumprimes/sumprimes-10k.tig
+
+benchmarks-suite: binaries
+	$(foreach program, $(shell find src/benchmark/suite/*.tig), ./src/benchmark/benchmark.sh $(program);)
+
+
 
 venv:
 	python -m virtualenv --python=/usr/bin/python2.7 venv
