@@ -11,8 +11,7 @@ class TestEvaluating(unittest.TestCase):
                                    TypeId('int'),
                                    Add(LValue('a', None, 0, 1), LValue('b', None, 0, 2)))
         call = FunctionCall('add', [IntegerValue(1), IntegerValue(1)])
-        env = Environment()
-        env.push(1)
+        env = Environment.empty().push(1)
         env.set((0, 0), decl)
 
         result = call.evaluate(env)
@@ -26,8 +25,7 @@ class TestEvaluating(unittest.TestCase):
                                          TypeId('int'),
                                          lambda a: IntegerValue(a.integer * a.integer))
         call = FunctionCall('square', [IntegerValue(7)])
-        env = Environment()
-        env.push(1)
+        env = Environment.empty().push(1)
         env.set((0, 0), decl)
 
         result = call.evaluate(env)
@@ -41,7 +39,7 @@ class TestEvaluating(unittest.TestCase):
         initial_value = Add(IntegerValue(2), IntegerValue(2))
         array_creation = ArrayCreation(type, length, initial_value)
 
-        result = array_creation.evaluate(Environment())
+        result = array_creation.evaluate(Environment.empty())
 
         self.assertIsInstance(result, ArrayValue)
         self.assertEqual(2, result.length)
@@ -67,8 +65,7 @@ class TestEvaluating(unittest.TestCase):
         # note the manually assigned path for 'a'
 
         # set 'a := 42' in a pre-existing environment
-        env = Environment()
-        env.push(1)
+        env = Environment.empty().push(1)
         env.set((0, 0), IntegerValue(42))
 
         # run the function to program the environment
@@ -102,8 +99,7 @@ class TestEvaluating(unittest.TestCase):
         # note the manually assigned paths for 'a' and 'x'
 
         # set 'a := 42' in a pre-existing environment
-        env = Environment()
-        env.push(1)
+        env = Environment.empty().push(1)
         env.set((0, 0), IntegerValue(42))
 
         # run the function to change the environment and it should still affect the outer scope
