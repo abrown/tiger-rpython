@@ -235,11 +235,19 @@ class TestParsing(unittest.TestCase):
     def test_inequality_of_symbols(self):
         self.assertFalse(SymbolToken(')') != SymbolToken(')'))
 
-    def test_break(self):
+    def test_break_in_complex_for(self):
         self.assertParsesTo('for i := 1 to 9 do if i > 5 then break else print(i)',
                             For('i', IntegerValue(1), IntegerValue(9),
                                 If(GreaterThan(LValue('i'), IntegerValue(5)), Break(),
                                    FunctionCall('print', [LValue('i')]))))
+
+    def test_single_line_comments(self):
+        self.assertParsesTo('42 // this should not appear', IntegerValue(42))
+        self.assertParsesTo("""
+        a + 
+        // skip this
+        b
+        """, Add(LValue('a'), LValue('b')))
 
 
 if __name__ == '__main__':

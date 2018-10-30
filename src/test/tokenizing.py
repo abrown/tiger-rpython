@@ -50,9 +50,13 @@ class TestTokenizer(unittest.TestCase):
     def test_division(self):
         self.assertTokenizesTo('a / b', [IdentifierToken('a'), SymbolToken('/'), IdentifierToken('b')])
 
-    def test_comments(self):
+    def test_multi_line_comments(self):
         self.assertTokenizesTo('a /* ... */ b', [IdentifierToken('a'), IdentifierToken('b')])
         self.assertTokenizesTo('/ /* ... /* ... */ ... */ /', [SymbolToken('/'), SymbolToken('/')])
+
+    def test_single_line_comments(self):
+        self.assertTokenizesTo('// ...', [])
+        self.assertTokenizesTo('a // b', [IdentifierToken('a')])
 
 
 if __name__ == '__main__':

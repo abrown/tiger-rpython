@@ -83,6 +83,8 @@ class Tokenizer:
                 d = self.__advance()
                 if c == '/' and d == '*':
                     self.__comment()  # advance until end of comment
+                elif c == '/' and d == '/':
+                    self.__advance_until('\n')
                 elif c == '<' and d in '>=':
                     self.__advance()
                     return SymbolToken(c + d, location)
