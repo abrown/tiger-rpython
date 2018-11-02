@@ -5,19 +5,12 @@ from src.ast import IntegerValue, FunctionParameter, TypeId, StringValue, \
 from src.environment import Environment
 
 try:
-    from rpython.rlib.jit import JitDriver
     from rpython.rlib.rtimer import read_timestamp
 except ImportError:
-    class JitDriver(object):
-        def __init__(self, **kw): pass
 
-        def jit_merge_point(self, **kw): pass
-
-        def read_timestamp(self):
-            import time
-            return time.time_ns()  # TODO convert to float
-
-jitdriver = JitDriver(greens=['code'], reds='auto')
+    def read_timestamp():
+        import time
+        return time.clock()  # TODO will not work in 2.7; convert to float
 
 
 def read_file(filename):
@@ -32,14 +25,6 @@ def read_file(filename):
 
     os.close(fd)
     return text
-
-
-def trick_rpython_into_jit_compiling():
-    # TODO is this needed?
-    a = IntegerValue(42)
-    b = a.to_string()
-    jitdriver.jit_merge_point(code=b)
-    return b
 
 
 STDOUT_FD = 1
@@ -68,7 +53,6 @@ start_timestamp = Timestamp()
 
 def tiger_start_timer():
     """Native function to start a timer"""
-    print("called tiger_start_timer")
     start_timestamp.value = read_timestamp()
     return IntegerValue(start_timestamp.value)
 
@@ -77,7 +61,7 @@ def tiger_stop_timer():
     """Native function to stop the timer timer, printing out the number of ticks"""
     end_timestamp = read_timestamp()
     total_time = end_timestamp - start_timestamp.value
-    os.write(STDOUT_FD, "Ticks? =  %d\n" % total_time)
+    os.write(STDERR_FD, "Ticks =  %d\n" % total_time)
     return IntegerValue(total_time)
 
 
