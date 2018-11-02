@@ -109,7 +109,7 @@ class TestEvaluating(unittest.TestCase):
 
         self.assertEqual(IntegerValue(99), env.get((0, 0)))
 
-    def test_for_loo(self):
+    def test_for_loop(self):
         code = """
         for i := 1 to 9 do
             let var a := 42 in
@@ -119,23 +119,14 @@ class TestEvaluating(unittest.TestCase):
 
         program = Parser(code).parse(['print'])
         stdout = OutputContainer()
-
-        def tiger_print(s):
-            if isinstance(s, IntegerValue):
-                stdout.value += str(s.integer)
-            elif isinstance(s, StringValue):
-                stdout.value += s.string
-            else:
-                raise ValueError('Unknown value type ' + str(s))
-
         env = Environment.empty().push(1)
         env.set((0, 0), NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('string', TypeId('string'))],
-                                                             None, tiger_print))
+                                                             None, stdout.capture))
 
         result = program.evaluate(env)
 
         self.assertEqual(None, result)
-        self.assertEqual("123456789", stdout.value)
+        self.assertEqual("123456789", stdout.get_captured())
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 import os
 
+from src.ast import IntegerValue, StringValue
 from src.parser import Parser
 
 
@@ -29,4 +30,15 @@ def parse_file(path, native_function_names=None):
 
 class OutputContainer:
     """Container for holding output"""
-    value = ""
+    __value__ = ""
+
+    def capture(self, s):
+        if isinstance(s, IntegerValue):
+            self.__value__ += str(s.integer)
+        elif isinstance(s, StringValue):
+            self.__value__ += s.string
+        else:
+            raise ValueError('Unknown value type ' + str(s))
+
+    def get_captured(self):
+        return self.__value__
