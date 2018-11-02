@@ -78,7 +78,7 @@ class Parser:
         self.__expect(SymbolToken('('))
         args = []
         token = self.__peek()
-        if token != SymbolToken(')'):
+        if not token.equals(SymbolToken(')')):
             exp = self.expression()
             args.append(exp)
             while self.__accept_and_consume(SymbolToken(',')):
@@ -338,7 +338,7 @@ class Parser:
     def sequence(self):
         exps = []
         self.__expect(SymbolToken('('))
-        if self.__peek() != SymbolToken(')'):
+        if not self.__peek().equals(SymbolToken(')')):
             exp = self.expression()
             exps.append(exp)
             while self.__accept_and_consume(SymbolToken(';')):
