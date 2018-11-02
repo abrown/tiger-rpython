@@ -1,15 +1,21 @@
 import os
 
-from src.ast import IntegerValue, NativeFunctionDeclaration, FunctionParameter, TypeId, StringValue
+from src.ast import IntegerValue, FunctionParameter, TypeId, StringValue, \
+    NativeNoArgumentFunctionDeclaration, NativeOneArgumentFunctionDeclaration, NativeFunctionDeclaration
 from src.environment import Environment
 
 try:
     from rpython.rlib.jit import JitDriver
+    from rpython.rlib.rtimer import read_timestamp
 except ImportError:
     class JitDriver(object):
         def __init__(self, **kw): pass
 
         def jit_merge_point(self, **kw): pass
+
+        def read_timestamp(self):
+            import time
+            return time.time_ns()  # TODO convert to float
 
 jitdriver = JitDriver(greens=['code'], reds='auto')
 
@@ -29,6 +35,7 @@ def read_file(filename):
 
 
 def trick_rpython_into_jit_compiling():
+    # TODO is this needed?
     a = IntegerValue(42)
     b = a.to_string()
     jitdriver.jit_merge_point(code=b)
@@ -40,6 +47,7 @@ STDERR_FD = 2
 
 
 def tiger_print(value):
+    """Native function to print Tiger values; will not append a newline"""
     if isinstance(value, IntegerValue):
         os.write(STDOUT_FD, str(value.integer))
     elif isinstance(value, StringValue):
@@ -48,8 +56,53 @@ def tiger_print(value):
         raise ValueError('Unknown value type %s' % value.__class__.__name__)
 
 
+class Timestamp:
+    """
+    Number of ticks?
+    """
+    value = 0
+
+
+start_timestamp = Timestamp()
+
+
+def tiger_start_timer():
+    """Native function to start a timer"""
+    print("called tiger_start_timer")
+    start_timestamp.value = read_timestamp()
+    return IntegerValue(start_timestamp.value)
+
+
+def tiger_stop_timer():
+    """Native function to stop the timer timer, printing out the number of ticks"""
+    end_timestamp = read_timestamp()
+    total_time = end_timestamp - start_timestamp.value
+    os.write(STDOUT_FD, "Ticks? =  %d\n" % total_time)
+    return IntegerValue(total_time)
+
+
 def create_environment_with_natives():
-    environment = Environment.empty().push(1)
-    environment.set((0, 0), NativeFunctionDeclaration('print', [FunctionParameter('string', TypeId('string'))], None,
-                                                      tiger_print))
+    """Convenience method to add all native functions to the environment"""
+    environment = Environment.empty().push(3)
+
+    print_function = NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('string', TypeId('string'))],
+                                                          None, tiger_print)
+    environment.set((0, 0), print_function)
+
+    time_go_function = NativeNoArgumentFunctionDeclaration('timeGo', [], TypeId('int'), tiger_start_timer)
+    environment.set((0, 1), time_go_function)
+
+    time_stop_function = NativeNoArgumentFunctionDeclaration('timeStop', [], TypeId('int'), tiger_stop_timer)
+    environment.set((0, 2), time_stop_function)
+
     return environment
+
+
+def list_native_environment_names(env):
+    """List the names of native functions in the environment; this expects all names to be in the current level"""
+    assert isinstance(env, Environment)
+    names = []
+    for exp in env.expressions:
+        if isinstance(exp, NativeFunctionDeclaration):
+            names.append(exp.name)
+    return names
