@@ -9,7 +9,7 @@ from src.scopes import DepthFirstAstIterator, ExitScope
 
 class TestScopeTransformations(unittest.TestCase):
     def to_program(self, text, absolutize_lvalues=True):
-        program = Parser(text).parse(absolutize_lvalues)
+        program = Parser(text).parse(['print'] if absolutize_lvalues else None)
         return program
 
     def ast_to_list(self, expression):
@@ -171,6 +171,20 @@ class TestScopeTransformations(unittest.TestCase):
 
         self.assertEqual(l, LValue('l'))
         self.assertEqual(1, l.index)
+
+    def test_for_loop(self):
+        program = self.to_program("""
+        for a := 1 to 9 do
+          let var b := 42 in
+            print(a)
+           end
+        """)
+
+        p = next(self.find_all_expressions(program, FunctionCall))
+        _, a, _, _ = self.find_all_expressions(program, LValue)
+
+        self.assertEqual(1, a.level)
+        self.assertEqual(2, p.level)
 
 
 if __name__ == '__main__':

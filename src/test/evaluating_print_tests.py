@@ -1,9 +1,10 @@
 import sys
 import unittest
 
-from src.ast import NativeFunctionDeclaration, FunctionParameter, TypeId, IntegerValue, StringValue
+from src.ast import FunctionParameter, TypeId, IntegerValue, StringValue, \
+    NativeOneArgumentFunctionDeclaration
 from src.environment import Environment
-from src.test.util import parse_file, list_test_files, get_file_name, read_file
+from src.test.test_utilities import parse_file, list_test_files, get_file_name, read_file, OutputContainer
 
 # note: this may be helpful for testing larger recursion depths
 sys.setrecursionlimit(10000)
@@ -13,15 +14,10 @@ class TestEvaluatingPrintTests(unittest.TestCase):
     pass
 
 
-class output:
-    """Container for holding output"""
-    value = ""
-
-
 def generate_print_test(path):
     def test(self):
-        program = parse_file(path)
-        stdout = output()
+        program = parse_file(path, ['print'])  # see addition of print below
+        stdout = OutputContainer()
 
         def tiger_print(s):
             if isinstance(s, IntegerValue):
@@ -32,7 +28,8 @@ def generate_print_test(path):
                 raise ValueError('Unknown value type ' + str(s))
 
         env = Environment.empty().push(1)
-        env.set((0, 0), NativeFunctionDeclaration('print', [FunctionParameter('s', TypeId('str'))], None, tiger_print))
+        env.set((0, 0), NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('s', TypeId('str'))], None,
+                                                             tiger_print))
 
         program.evaluate(env)
 

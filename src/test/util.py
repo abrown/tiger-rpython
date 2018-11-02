@@ -1,27 +1,18 @@
-import os
+import unittest
 
+from src.ast import *
+from src.environment import Environment
+from src.main.util import create_environment_with_natives, list_native_environment_names
 from src.parser import Parser
 
 
-def list_test_files(directory):
-    if not os.path.isabs(directory):
-        current_directory = os.path.dirname(os.path.realpath(__file__))
-        directory = os.path.join(current_directory, directory)
-    for file in os.listdir(directory):
-        if file.endswith('.tig'):
-            yield os.path.join(directory, file)
+class TestUtil(unittest.TestCase):
+    def test_function_call(self):
+        env = create_environment_with_natives()
+        names = list_native_environment_names(env)
+
+        self.assertListEqual(['print', 'timeGo', 'timeStop'], names)
 
 
-def get_file_name(path):
-    return os.path.basename(path)
-
-
-def read_file(path):
-    with open(path, 'r') as file:
-        return file.read()
-
-
-def parse_file(path):
-    contents = read_file(path)
-    parser = Parser(contents, path)
-    return parser.parse()
+if __name__ == '__main__':
+    unittest.main()

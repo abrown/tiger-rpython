@@ -39,7 +39,9 @@ def get_location(code):
 
 
 jitdriver = JitDriver(greens=['code'], reds=['env', 'result', 'value'], get_printable_location=get_location)
-#jitdriver = JitDriver(greens=['code'], reds=['env', 'result', 'value'], virtualizables=['env'], get_printable_location=get_location)
+
+
+# jitdriver = JitDriver(greens=['code'], reds=['env', 'result', 'value'], virtualizables=['env'], get_printable_location=get_location)
 
 
 def jitpolicy(driver):
@@ -457,7 +459,7 @@ class Let(Exp):
         for expression in self.expressions:
             value = expression.evaluate(env)
 
-        #env = env.pop()  # unnecessary
+        # env = env.pop()  # unnecessary
 
         return value
 
@@ -488,7 +490,7 @@ class FunctionCall(Exp):
         declaration = env.get((self.level, self.index))
         if not declaration:
             raise InterpretationError('Could not find function %s' % self.name)
-        assert (isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration))
+        #assert (isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration))
 
         # check arguments
         if len(self.arguments) != len(declaration.parameters):
@@ -500,28 +502,30 @@ class FunctionCall(Exp):
         activation_environment = activation_environment.push(len(declaration.parameters) + 1)
         activation_environment.set((0, 0), declaration)
 
-        # evaluate arguments
-        value = None
-        for i in range(len(self.arguments)):
-            value = self.arguments[i].evaluate(env)
-            assert (isinstance(value, Value))
-            activation_environment.set((0, i + 1), value)
-
         # evaluate body
         result = None
         if isinstance(declaration, FunctionDeclaration):
+            # evaluate arguments
+            for i in range(len(self.arguments)):
+                value = self.arguments[i].evaluate(env)
+                assert (isinstance(value, Value))
+                activation_environment.set((0, i + 1), value)
+            # call function
             result = declaration.body.evaluate(activation_environment)
-            # TODO type-check result
         elif isinstance(declaration, NativeFunctionDeclaration):
-            # only one argument is allowed due to calling RPythonized functions with var-args
-            if len(self.arguments) == 1:
-                result = declaration.function(value)
-                assert isinstance(result, Value) if result is not None else True
-                # TODO type-check result
-            else:
-                raise InterpretationError('Only one argument allowed in native functions: %s' % self.name)
+            # evaluate arguments (no need for an activation environment)
+            values = []
+            for i in range(len(self.arguments)):
+                value = self.arguments[i].evaluate(env)
+                assert (isinstance(value, Value))
+                values.append(value)
+            # call function
+            result = declaration.call(values)
         else:
             raise InterpretationError('Unknown function type: %s' % declaration.__class__.__name__)
+
+        assert isinstance(result, Value) if result is not None else True
+        # TODO type-check result
 
         return result
 
@@ -881,14 +885,16 @@ class FunctionDeclaration(Declaration):
 class NativeFunctionDeclaration(Declaration):
     _immutable_ = True
 
-    def __init__(self, name, parameters=None, return_type=None, function_=None):
+    def __init__(self, name, parameters=None, return_type=None):
         Declaration.__init__(self, name)
         self.parameters = parameters or []
         assert isinstance(self.parameters, list)
         assert isinstance(return_type, TypeId) or return_type is None
         self.return_type = return_type
-        self.function = function_
-        self.environment = Environment.empty() # native functions cannot touch the interpreter environment
+        self.environment = Environment.empty()  # native functions cannot touch the interpreter environment
+
+    def call(self, arguments):
+        raise InterpretationError('Use a subclass of NativeFunctionDeclaration that specifies the number of arguments')
 
     def to_string(self):
         return '%s(name=%s, parameters=%s, return_type=%s)' % (
@@ -898,6 +904,42 @@ class NativeFunctionDeclaration(Declaration):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and list_equals(self.parameters, other.parameters) \
                and nullable_equals(self.return_type, other.return_type)
+
+
+class NativeNoArgumentFunctionDeclaration(NativeFunctionDeclaration):
+    _immutable_ = True
+
+    def __init__(self, name, parameters, return_type, function):
+        NativeFunctionDeclaration.__init__(self, name, parameters, return_type)
+        self.function = function
+
+    def call(self, arguments):
+        assert len(arguments) == 0
+        return self.function()
+
+
+class NativeOneArgumentFunctionDeclaration(NativeFunctionDeclaration):
+    _immutable_ = True
+
+    def __init__(self, name, parameters, return_type, function):
+        NativeFunctionDeclaration.__init__(self, name, parameters, return_type)
+        self.function = function
+
+    def call(self, arguments):
+        assert len(arguments) == 1
+        return self.function(arguments[0])
+
+
+class NativeTwoArgumentFunctionDeclaration(NativeFunctionDeclaration):
+    _immutable_ = True
+
+    def __init__(self, name, parameters, return_type, function):
+        NativeFunctionDeclaration.__init__(self, name, parameters, return_type)
+        self.function = function
+
+    def call(self, arguments):
+        assert len(arguments) == 2
+        return self.function(arguments[0], arguments[1])
 
 
 # TYPES

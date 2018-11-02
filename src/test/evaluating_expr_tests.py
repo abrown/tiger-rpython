@@ -1,6 +1,6 @@
 import unittest
 
-from src.test.util import parse_file, list_test_files, get_file_name
+from src.test.test_utilities import parse_file, list_test_files, get_file_name
 
 
 class TestEvaluatingExprTests(unittest.TestCase):

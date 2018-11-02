@@ -1,6 +1,6 @@
 import sys
 
-from src.main.util import read_file, create_environment_with_natives
+from src.main.util import read_file, create_environment_with_natives, list_native_environment_names
 from src.parser import Parser, ParseError
 
 
@@ -16,15 +16,18 @@ def main(argv):
 
     program_contents = read_file(argv[1])
 
+    # set up environment
+    environment = create_environment_with_natives()
+    native_function_names = list_native_environment_names(environment)
+
     # parse input program
     try:
-        program = Parser(program_contents, argv[1]).parse()
+        program = Parser(program_contents, argv[1]).parse(native_function_names)
     except ParseError as e:
         print("Parse failure: %s" % e.to_string())
         return 42
 
     # evaluate the program
-    environment = create_environment_with_natives()
     result = program.evaluate(environment)
 
     # print the result and exit
