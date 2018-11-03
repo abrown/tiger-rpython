@@ -472,7 +472,7 @@ class Let(Exp):
         for expression in self.expressions:
             value = expression.evaluate(env)
 
-        # env = env.pop()  # unnecessary
+        env = env.pop()
 
         return value
 

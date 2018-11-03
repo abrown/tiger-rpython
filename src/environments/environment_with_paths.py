@@ -63,10 +63,18 @@ class Environment(EnvironmentInterface):
         self.local_variables = local_variables or EnvironmentLevel(None, 0)  # TODO root level
         self.local_types = local_types or EnvironmentLevel(None, 0)  # TODO root level
 
+    @staticmethod
+    def empty(parent=None, number_of_names=0):
+        assert isinstance(number_of_names, int)
+        variables = EnvironmentLevel(parent, number_of_names)
+        types = EnvironmentLevel(parent, number_of_names)
+        return Environment(variables, types)
+
     def push(self, number_of_names):
         """Create a new environment level (i.e. frame)"""
         self.local_variables = EnvironmentLevel(self.local_variables, number_of_names)  # TODO should be (total - types)
         self.local_types = EnvironmentLevel(self.local_types, number_of_names)  # TODO should be (total - variables)
+        return self
 
     def pop(self):
         """Remove and forget the topmost environment level (i.e. frame)"""
@@ -95,6 +103,9 @@ class Environment(EnvironmentInterface):
         # location found, modify it (otherwise locate will raise)
         found_level.expressions[found_index] = expression
 
+    def set_type(self, path, expression):
+        self.set(path, expression, self.local_types)
+
     def get(self, path, level=None):
         """Retrieve 'name' from the environment stack by searching through all levels"""
         level = level or self.local_variables
@@ -102,6 +113,9 @@ class Environment(EnvironmentInterface):
 
         found_level, found_index = self.__locate__(path, level)
         return found_level.expressions[found_index]
+
+    def get_type(self, path):
+        return self.get(path, self.local_types)
 
     def unset(self, path, level=None):
         """Unset 'name' only in the current level; will not search through the entire environment"""

@@ -92,7 +92,7 @@ def list_native_environment_names(env):
     """List the names of native functions in the environment; this expects all names to be in the current level"""
     assert isinstance(env, Environment)
     names = []
-    for exp in env.expressions:
+    for exp in env.local_variables.expressions:
         if isinstance(exp, NativeFunctionDeclaration):
             names.append(exp.name)
     return names
