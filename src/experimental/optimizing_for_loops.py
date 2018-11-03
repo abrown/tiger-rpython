@@ -4,7 +4,7 @@ import interpretation_mechanisms
 # Begin RPython setup; catch import errors so this can still run in CPython...
 from src.ast import IntegerValue, For, BreakException, Let, VariableDeclaration, Sequence, LValue, Assign, Subtract
 from src.environment import Environment, EnvironmentLevel
-from src.main.util import create_environment_with_natives
+from src.native_functions import create_environment_with_natives
 from src.parser import Parser
 
 try:

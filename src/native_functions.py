@@ -43,7 +43,7 @@ def tiger_print(value):
 
 class Timestamp:
     """
-    Number of ticks?
+    Number of ticks (RPython); wall clock time (Python)
     """
     value = 0
 
@@ -52,16 +52,17 @@ start_timestamp = Timestamp()
 
 
 def tiger_start_timer():
-    """Native function to start a timer"""
+    """Native function to start a timer; in RPython this will measure the CPU ticks with RDTSC, see
+    genop_math_read_timestamp in pypy/rpython/jit/backend/x86/assembler.py"""
     start_timestamp.value = read_timestamp()
     return IntegerValue(start_timestamp.value)
 
 
 def tiger_stop_timer():
-    """Native function to stop the timer timer, printing out the number of ticks"""
+    """Native function to stop the timer timer, printing out the number of ticks; see tiger_start_timer()"""
     end_timestamp = read_timestamp()
     total_time = end_timestamp - start_timestamp.value
-    os.write(STDERR_FD, "Ticks =  %d\n" % total_time)
+    os.write(STDERR_FD, "ticks=%d\n" % total_time)
     return IntegerValue(total_time)
 
 

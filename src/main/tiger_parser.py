@@ -1,6 +1,6 @@
 import sys
 
-from src.main.util import read_file
+from src.native_functions import read_file
 from src.parser import Parser, ParseError
 
 

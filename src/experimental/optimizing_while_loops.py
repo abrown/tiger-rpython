@@ -5,7 +5,7 @@ import interpretation_mechanisms
 from src.ast import IntegerValue, BreakException, Let, VariableDeclaration, Sequence, LValue, Assign, While, LessThan, \
     Add
 from src.environment_with_paths import EnvironmentLevel
-from src.main.util import create_environment_with_natives
+from src.native_functions import create_environment_with_natives
 from src.parser import Parser
 
 try:

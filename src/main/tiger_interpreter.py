@@ -1,6 +1,6 @@
 import sys
 
-from src.main.util import read_file, create_environment_with_natives, list_native_environment_names
+from src.native_functions import read_file, create_environment_with_natives, list_native_environment_names
 from src.parser import Parser, ParseError
 
 

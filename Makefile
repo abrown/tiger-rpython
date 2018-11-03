@@ -21,15 +21,15 @@ integration-test-evaluating: bin/tiger-interpreter
 
 binaries: bin/tiger-parser bin/tiger-interpreter bin/tiger-interpreter-no-jit
 
-bin/tiger-parser: src/main/tiger_parser.py src/main/util.py $(shell find src/*.py)
+bin/tiger-parser: src/main/tiger_parser.py src/native_functions.py $(shell find src/*.py)
 	mkdir -p bin
 	PYTHONPATH=. python ${RPYTHON} --log --opt=3 --output=$@ $<
 
-bin/tiger-interpreter: src/main/tiger_interpreter.py src/main/util.py $(shell find src/*.py)
+bin/tiger-interpreter: src/main/tiger_interpreter.py src/native_functions.py $(shell find src/*.py)
 	mkdir -p bin
 	PYTHONPATH=. python ${RPYTHON} --log --opt=jit --output=$@ $<
 
-bin/tiger-interpreter-no-jit: src/main/tiger_interpreter.py src/main/util.py $(shell find src/*.py)
+bin/tiger-interpreter-no-jit: src/main/tiger_interpreter.py src/native_functions.py $(shell find src/*.py)
 	mkdir -p bin
 	PYTHONPATH=. python ${RPYTHON} --log --opt=3 --output=$@ $<
 
