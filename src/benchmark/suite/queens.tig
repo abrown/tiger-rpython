@@ -7,44 +7,45 @@ do
     type intArray = array of int
   in
     let
-      function queens():int =
+      function queens(n: int):int =
         let
-          var freeRows : intArray := intArray[ 8] of  1
-          var freeMaxs : intArray := intArray[16] of  1
-          var freeMins : intArray := intArray[16] of  1
-          var queenRows: intArray := intArray[ 8] of -1
+          var m : int := n - 1
+          var freeRows : intArray := intArray[  n] of  1
+          var freeMaxs : intArray := intArray[2*n] of  1
+          var freeMins : intArray := intArray[2*n] of  1
+          var queenRows: intArray := intArray[  n] of -1
 
           function printBoard() = (
-            for i := 0 to 7
+            for r := 0 to m
             do (
-              for j := 0 to 7
+              for c := 0 to m
               do
-                print(if queenRows[i] = j then " X" else " .");
+                print(if queenRows[r] = c then " X" else " .");
               print("\n")
             );
             print("\n"))
           
           function getRowColumn(r: int, c: int): int =
-            (freeRows[r] + freeMaxs[c+r] + freeMins[c-r+7]) = 3
+            (freeRows[r] + freeMaxs[c+r] + freeMins[c-r+m]) = 3
           
           function setRowColumn(r: int, c: int, v: int) =
             (
              freeRows[r        ] := v;
              freeMaxs[c + r    ] := v;
-             freeMins[c - r + 7] := v
+             freeMins[c - r + m] := v
             )
           
           function placeQueen(c: int):int =
             let
               var placed : int := 0
             in
-              for r := 0 to 7
+              for r := 0 to m
               do (
                 if getRowColumn(r, c) = 1
                 then (
                   queenRows[r] := c;
                   setRowColumn(r, c, 0);
-                  if c = 7
+                  if c = m
                   then (
                     placed := 1;
                     break
@@ -62,10 +63,12 @@ do
             end
         in
           placeQueen(0)
-          // for debugging: (placeQueen(0); printBoard())
+          // for debugging:
+          //(placeQueen(0); printBoard())
         end
      in
-       queens()
+       for i := 1 to 20 do
+       queens(i)
      end
   end;
   timeStop()

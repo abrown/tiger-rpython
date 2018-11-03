@@ -1,4 +1,4 @@
-//https://github.com/smarr/are-we-fast-yet/blob/master/benchmarks/Java/src/Sieve.java
+// see https://github.com/smarr/are-we-fast-yet/blob/master/benchmarks/Java/src/Sieve.java
 for i := 0 to 30
 do
   (
