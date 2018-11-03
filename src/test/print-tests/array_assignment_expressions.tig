@@ -1,0 +1,11 @@
+let
+  type iarray = array of int
+  var l := 3
+  var a := iarray [l] of 1
+in
+  (a[42 - 42] := 0;
+  a[a[0] + 1] := 1;
+  a[l - a[1]] := 2;
+  for i := 0 to (l - 1) do
+    print(a[i]))
+end
