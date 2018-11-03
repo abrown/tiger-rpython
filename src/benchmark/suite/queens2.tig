@@ -45,8 +45,7 @@ do
                     placed := 1;
                     break
                   );
-                  setRowColumn(r, c, 1);
-                  flush()
+                  setRowColumn(r, c, 1)
                 )
               );
               placed
