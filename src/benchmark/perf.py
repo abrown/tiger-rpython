@@ -6,6 +6,21 @@ import subprocess
 logging.basicConfig(level=logging.INFO)
 
 
+def run_command(*args):
+    """
+    Run a command, capturing the output
+    :param args: a vararg list of the command to run
+    :return: a tuple with the (stdout, stderr) strings or an exception is thrown
+    """
+    logging.info("Running: %s", args)
+    pipes = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = pipes.communicate()
+    if pipes.returncode != 0:
+        # print stderr, stdout?
+        raise Exception("Failed to run command (code: %d): %s" % (pipes.returncode, args))
+    return stdout, stderr
+
+
 def run_perf_on(*args):
     """
     Run a command from within 'perf'; see https://perf.wiki.kernel.org/index.php/Tutorial; note: it would not be hard
@@ -15,14 +30,7 @@ def run_perf_on(*args):
     """
     perf_args = ['perf', 'stat', '-x;']
     perf_args.extend(args)
-
-    logging.info("Running: %s", perf_args)
-    pipes = subprocess.Popen(perf_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = pipes.communicate()
-    if pipes.returncode != 0:
-        # print stderr, stdout?
-        raise Exception("Failed to run command (code: %d): %s" % (pipes.returncode, perf_args))
-    return stdout, stderr
+    return run_command(*perf_args)
 
 
 def parse_perf_output(output):
