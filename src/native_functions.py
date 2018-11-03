@@ -10,7 +10,7 @@ except ImportError:
 
     def read_timestamp():
         import time
-        return time.clock()  # TODO will not work in 2.7; convert to float
+        return int(time.clock() * 1000000)  # micro-seconds
 
 
 def read_file(filename):
@@ -62,7 +62,8 @@ def tiger_stop_timer():
     """Native function to stop the timer timer, printing out the number of ticks; see tiger_start_timer()"""
     end_timestamp = read_timestamp()
     total_time = end_timestamp - start_timestamp.value
-    os.write(STDERR_FD, "ticks=%d\n" % total_time)
+    if os.environ.get('DEBUG', False):
+        os.write(STDERR_FD, "ticks=%d\n" % total_time)
     return IntegerValue(total_time)
 
 
