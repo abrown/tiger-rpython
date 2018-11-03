@@ -1,4 +1,4 @@
-//https://github.com/smarr/are-we-fast-yet/blob/master/benchmarks/Java/src/Queens.java
+// see https://github.com/smarr/are-we-fast-yet/blob/master/benchmarks/Java/src/Queens.java
 for i := 0 to 30
 do
   (
@@ -13,6 +13,16 @@ do
           var freeMaxs : intArray := intArray[16] of  1
           var freeMins : intArray := intArray[16] of  1
           var queenRows: intArray := intArray[ 8] of -1
+
+          function printBoard() = (
+            for i := 0 to 7
+            do (
+              for j := 0 to 7
+              do
+                print(if queenRows[i] = j then " X" else " .");
+              print("\n")
+            );
+            print("\n"))
           
           function getRowColumn(r: int, c: int): int =
             (freeRows[r] + freeMaxs[c+r] + freeMins[c-r+7]) = 3
@@ -29,7 +39,7 @@ do
               var placed : int := 0
             in
               for r := 0 to 7
-              do ( 
+              do (
                 if getRowColumn(r, c) = 1
                 then (
                   queenRows[r] := c;
@@ -49,14 +59,13 @@ do
                 )
               );
               placed
-                  
             end
-              
         in
           placeQueen(0)
+          // for debugging: (placeQueen(0); printBoard())
         end
      in
-      queens()
+       queens()
      end
   end;
   timeStop()
