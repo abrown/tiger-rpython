@@ -1,6 +1,6 @@
 import unittest
 
-from src.environment_with_paths import Environment
+from src.environments.environment_with_paths import Environment
 
 
 class TestBinding(unittest.TestCase):

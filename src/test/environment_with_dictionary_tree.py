@@ -1,6 +1,6 @@
 import unittest
 
-from src.environment_with_dictionary_tree import Environment
+from src.environments.environment_with_dictionary_tree import Environment
 
 
 class TestBinding(unittest.TestCase):

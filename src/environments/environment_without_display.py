@@ -1,5 +1,5 @@
 # Begin RPython setup; catch import errors so this can still run in CPython...
-from src.environment_interface import EnvironmentInterface
+from src.environments.environment_interface import EnvironmentInterface
 
 try:
     from rpython.rlib.jit import JitDriver, elidable, promote, unroll_safe, jit_debug, we_are_jitted
