@@ -63,10 +63,15 @@ class Environment(EnvironmentInterface):
         self.local_variables = local_variables or EnvironmentLevel(None)
         self.local_types = local_types or EnvironmentLevel(None)
 
+    @staticmethod
+    def empty(parent=None, number_of_names=0):
+        return Environment()
+
     def push(self, number_of_names):
         """Create a new environment level (i.e. frame)"""
         self.local_variables = EnvironmentLevel(self.local_variables)
         self.local_types = EnvironmentLevel(self.local_types)
+        return self
 
     def pop(self):
         """Remove and forget the topmost environment level (i.e. frame)"""
@@ -74,6 +79,7 @@ class Environment(EnvironmentInterface):
         self.local_variables = self.local_variables.parent
         assert self.local_types.parent is not None
         self.local_types = self.local_types.parent
+        return self
 
     def add(self, name, expression, level):
         """
@@ -100,6 +106,9 @@ class Environment(EnvironmentInterface):
             # location found, modify it
             found_level.expressions[index] = expression
 
+    def set_type(self, name, expression):
+        self.set(name, expression, self.local_types)
+
     def set_current_level(self, name, expression, level=None):
         """Set 'name' to 'expression' only in the current level; if it exists, modify it; otherwise, add it"""
         level = level or self.local_variables
@@ -113,6 +122,9 @@ class Environment(EnvironmentInterface):
             # if not, add it
             self.add(name, expression, level)
 
+    def set_type_current_level(self, name, expression):
+        self.set_current_level(name, expression, self.local_types)
+
     def get(self, name, level=None):
         """Retrieve 'name' from the environment stack by searching through all levels"""
         level = level or self.local_variables
@@ -123,6 +135,9 @@ class Environment(EnvironmentInterface):
             return None  # TODO throw?
         else:
             return level.expressions[index]
+
+    def get_type(self, name):
+        return self.get(name, self.local_types)
 
     def unset(self, name, level=None):
         """Unset 'name' only in the current level; will not search through the entire environment"""

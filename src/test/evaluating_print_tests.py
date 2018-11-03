@@ -19,7 +19,7 @@ def generate_print_test(path):
         program = parse_file(path, ['print'])  # see addition of print below
         stdout = OutputContainer()
         env = Environment.empty().push(1)
-        env.set((0, 0), NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('s', TypeId('str'))], None,
+        env.set('print', NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('s', TypeId('str'))], None,
                                                              stdout.capture))
 
         program.evaluate(env)

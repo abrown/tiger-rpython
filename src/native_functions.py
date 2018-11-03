@@ -77,13 +77,13 @@ def create_environment_with_natives():
 
     print_function = NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('string', TypeId('string'))],
                                                           None, tiger_print)
-    environment.set((0, 0), print_function)
+    environment.set('print', print_function)
 
     time_go_function = NativeNoArgumentFunctionDeclaration('timeGo', [], TypeId('int'), tiger_start_timer)
-    environment.set((0, 1), time_go_function)
+    environment.set('timeGo', time_go_function)
 
     time_stop_function = NativeNoArgumentFunctionDeclaration('timeStop', [], TypeId('int'), tiger_stop_timer)
-    environment.set((0, 2), time_stop_function)
+    environment.set('timeStop', time_stop_function)
 
     return environment
 
@@ -92,7 +92,7 @@ def list_native_environment_names(env):
     """List the names of native functions in the environment; this expects all names to be in the current level"""
     assert isinstance(env, Environment)
     names = []
-    for exp in env.expressions:
+    for exp in env.local_variables.expressions:
         if isinstance(exp, NativeFunctionDeclaration):
             names.append(exp.name)
     return names

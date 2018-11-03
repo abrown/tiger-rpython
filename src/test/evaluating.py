@@ -14,7 +14,7 @@ class TestEvaluating(unittest.TestCase):
                                    Add(LValue('a', None, 0, 1), LValue('b', None, 0, 2)))
         call = FunctionCall('add', [IntegerValue(1), IntegerValue(1)])
         env = Environment.empty().push(1)
-        env.set((0, 0), decl)
+        env.set('add', decl)
 
         result = call.evaluate(env)
 
@@ -28,7 +28,7 @@ class TestEvaluating(unittest.TestCase):
                                                     lambda a: IntegerValue(a.integer * a.integer))
         call = FunctionCall('square', [IntegerValue(7)])
         env = Environment.empty().push(1)
-        env.set((0, 0), decl)
+        env.set('square', decl)
 
         result = call.evaluate(env)
 
@@ -68,12 +68,12 @@ class TestEvaluating(unittest.TestCase):
 
         # set 'a := 42' in a pre-existing environment
         env = Environment.empty().push(1)
-        env.set((0, 0), IntegerValue(42))
+        env.set('a', IntegerValue(42))
 
         # run the function to program the environment
         program.evaluate(env)
 
-        self.assertEqual(IntegerValue(99), env.get((0, 0)))
+        self.assertEqual(IntegerValue(99), env.get('a'))
 
     def test_scoped_environment_still_affected_by_function_call(self):
         """
@@ -102,12 +102,12 @@ class TestEvaluating(unittest.TestCase):
 
         # set 'a := 42' in a pre-existing environment
         env = Environment.empty().push(1)
-        env.set((0, 0), IntegerValue(42))
+        env.set('a', IntegerValue(42))
 
         # run the function to change the environment and it should still affect the outer scope
         program.evaluate(env)
 
-        self.assertEqual(IntegerValue(99), env.get((0, 0)))
+        self.assertEqual(IntegerValue(99), env.get('a'))
 
     def test_for_loop(self):
         code = """
@@ -120,7 +120,7 @@ class TestEvaluating(unittest.TestCase):
         program = Parser(code).parse(['print'])
         stdout = OutputContainer()
         env = Environment.empty().push(1)
-        env.set((0, 0), NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('string', TypeId('string'))],
+        env.set('print', NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('string', TypeId('string'))],
                                                              None, stdout.capture))
 
         result = program.evaluate(env)

@@ -253,7 +253,7 @@ class LValue(Exp):
 
         # extract normal lvalue from environment
         assert (isinstance(lvalue, LValue))
-        value = env.get((self.level, self.index))
+        value = env.get(self.name)
         lvalue = lvalue.next
 
         # iterate over records and arrays
@@ -347,7 +347,7 @@ class RecordCreation(Exp):
 
     @unroll_safe
     def evaluate(self, env):
-        type = env.get_type((self.type_id.level, self.type_id.index))
+        type = env.get_type(self.type_id.name)
         assert (isinstance(type, RecordType))
         values = [None] * len(type.field_types)
         index = 0
@@ -382,13 +382,12 @@ class Assign(Exp):
         value = self.expression.evaluate(env)
 
         lvalue = self.lvalue
-        path = (lvalue.level, lvalue.index)
         if not lvalue.next:
             # assignment to a plain lvalue
-            env.set(path, value)
+            env.set(lvalue.name, value)
         else:
             # assignment to a sub-located destination
-            destination = env.get(path)
+            destination = env.get(lvalue.name)
             lvalue = lvalue.next
 
             # traverse all locators except the last one
@@ -472,7 +471,7 @@ class Let(Exp):
         for expression in self.expressions:
             value = expression.evaluate(env)
 
-        # env = env.pop()  # unnecessary
+        env = env.pop()
 
         return value
 
@@ -503,7 +502,7 @@ class FunctionCall(Exp):
         function_jitdriver.jit_merge_point(code=self)
 
         # find declaration
-        declaration = env.get((self.level, self.index))
+        declaration = env.get(self.name)
         if not declaration:
             raise InterpretationError('Could not find function %s' % self.name)
         assert isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration)
@@ -516,7 +515,7 @@ class FunctionCall(Exp):
         # use declaration environment for function call (note: push() allows us to reuse the frame)
         activation_environment = declaration.environment.clone()
         activation_environment = activation_environment.push(len(declaration.parameters) + 1)
-        activation_environment.set((0, 0), declaration)
+        activation_environment.set_current_level(declaration.name, declaration)
 
         # evaluate body
         result = None
@@ -525,7 +524,7 @@ class FunctionCall(Exp):
             for i in range(len(self.arguments)):
                 value = self.arguments[i].evaluate(env)
                 assert (isinstance(value, Value))
-                activation_environment.set((0, i + 1), value)
+                activation_environment.set_current_level(declaration.parameters[i].name, value)
             # call function
             result = declaration.body.evaluate(activation_environment)
         elif isinstance(declaration, NativeFunctionDeclaration):
@@ -826,7 +825,7 @@ class TypeDeclaration(Declaration):
 
     @unroll_safe
     def evaluate(self, env):
-        env.set_type((0, self.index), self.type)
+        env.set_type_current_level(self.name, self.type)
 
 
 class VariableDeclaration(Declaration):
@@ -850,7 +849,7 @@ class VariableDeclaration(Declaration):
     def evaluate(self, env):
         value = self.exp.evaluate(env)
         # TODO type-check
-        env.set((0, self.index), value)
+        env.set_current_level(self.name, value)
 
 
 class FunctionParameter(Declaration):
@@ -899,7 +898,7 @@ class FunctionDeclaration(Declaration):
     @unroll_safe
     def evaluate(self, env):
         assert (env is not None)
-        env.set((0, self.index), self)
+        env.set_current_level(self.name, self)
         self.environment = env.clone()
 
 
