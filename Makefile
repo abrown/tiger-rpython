@@ -53,6 +53,8 @@ benchmarks-sumprimes: binaries
 benchmarks-suite: binaries
 	$(foreach program, $(shell find src/benchmark/suite/*.tig), ./src/benchmark/benchmark.sh $(program);)
 
+benchmarks-environment-comparison: binaries
+	$(foreach program, $(shell find src/benchmark/environment-comparison/*.tig), /usr/bin/time ./bin/tiger-interpreter $(program);)
 
 
 venv:
