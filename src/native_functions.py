@@ -62,8 +62,12 @@ def tiger_stop_timer():
     """Native function to stop the timer timer, printing out the number of ticks; see tiger_start_timer()"""
     end_timestamp = read_timestamp()
     total_time = end_timestamp - start_timestamp.value
-    if os.environ.get('DEBUG', False):
-        os.write(STDERR_FD, "ticks=%d\n" % total_time)
+    try:
+        if int(os.environ['DEBUG']):
+            os.write(STDERR_FD, "ticks=%d\n" % total_time)
+    except KeyError:
+        # sure would like to avoid this try-catch
+        pass
     return IntegerValue(total_time)
 
 
