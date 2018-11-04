@@ -1,9 +1,9 @@
 import logging
-from itertools import cycle
 
 import matplotlib.pyplot as plt
 
 from perf import analyze
+from src.benchmark.charting import cycle_bar_styles
 
 # setup logging
 logging.basicConfig(level=logging.INFO)
@@ -13,21 +13,6 @@ data = [analyze('ls /'), analyze('curl -s google.com'), analyze('ls'), analyze('
 bar_indexes = range(len(data))
 x_values = [name for (name, _) in data]  # the command names
 y_values = [float(m['task-clock']['value']) for (name, m) in data]  # the task-times
-
-
-# setup styles
-def cycle_bar_styles():
-    """
-    Monochrome bar styles adapted from from http://olsgaard.dk/monochrome-black-white-plots-in-matplotlib.html
-    :return: yields an infinite list of unhatched and hatched dictionaries of bar plot settings
-    """
-    hatch_marks = cycle(['///', '--', '...', '\///', 'xxx', '\\\\'])
-    for hatch in hatch_marks:
-        unhatched = {'color': 'w'}
-        hatched = unhatched.copy()
-        hatched.update({'hatch': hatch, 'edgecolor': 'k', 'zorder': [10]})
-        yield unhatched, hatched
-
 
 # draw plot
 
