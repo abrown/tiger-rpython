@@ -23,6 +23,9 @@ def extract_benchmark_name(cmd):
 def extract_execution_time(results):
     return float(results['task-clock']['value'])
 
+def extract_execution_time_variance(results):
+    return float(results['task-clock']['variance'].replace('%', '')) / 100
+
 
 # gather data from pickled files
 path_to_pickled_data = 'var'
@@ -60,19 +63,21 @@ bar_width = 0.25
 bar_offset = 0
 bar_styles = cycle_bar_styles()
 for env, benchmarks in pickled_data.items():
-    names = [extract_benchmark_name(cmd) for (cmd, results) in benchmarks]
+    names = [extract_benchmark_name(cmd) for (cmd, _) in benchmarks]
     assert names == benchmark_names, "Benchmarks must all be in the same order"
 
-    times = [extract_execution_time(results) for (cmd, results) in benchmarks]
-    logging.info("Creating bar for %s: %s" % (env, times))
-
+    times = [extract_execution_time(results) for (_, results) in benchmarks]
     normalized_times = [time / normalization_time for (time, normalization_time) in zip(times, normalization_times)]
+
+    time_variance = [extract_execution_time_variance(results) for (_, results) in benchmarks]
+    error = [normalized_time * variance for (normalized_time, variance) in zip(normalized_times, time_variance)]
+    logging.info("Creating bar for %s: %s (error: %s)" % (env, times, error))
 
     # workaround for hatching, see https://stackoverflow.com/questions/5195466
     bar_indexes = [index + bar_width * bar_offset for index in range(len(benchmarks))]
     unhatched_style, hatched_style = next(bar_styles)
     ax.bar(bar_indexes, normalized_times, bar_width, **unhatched_style)
-    ax.bar(bar_indexes, normalized_times, bar_width, label=env, **hatched_style)
+    ax.bar(bar_indexes, normalized_times, bar_width, yerr=error, label=env, **hatched_style)
     # original color bar: ax.bar([index + bar_width * bar_offset for index in range(len(benchmarks))], normalized_times, bar_width, label=env)
 
     bar_offset += 1

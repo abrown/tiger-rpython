@@ -3,6 +3,8 @@ import logging
 import subprocess
 
 # setup logging
+from collections import OrderedDict
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -12,7 +14,7 @@ def run_command(*args):
     :param args: a vararg list of the command to run
     :return: a tuple with the (stdout, stderr) strings or an exception is thrown
     """
-    logging.info("Running: %s", args)
+    logging.info("Running: %s", ' '.join(args))
     pipes = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = pipes.communicate()
     if pipes.returncode != 0:
@@ -28,7 +30,7 @@ def run_perf_on(*args):
     :param args: a vararg list of the command to run
     :return: a tuple with the (stdout, stderr) strings or an exception is thrown
     """
-    perf_args = ['perf', 'stat', '-x;']
+    perf_args = ['perf', 'stat', '-x;', '-r 5']
     perf_args.extend(args)
     return run_command(*perf_args)
 
@@ -56,11 +58,11 @@ def parse_perf_output(output):
         Additional metrics may be printed with all earlier fields being empty.
     """
     output = output.split('\n')
-    fields = ['value', 'unit', 'event', 'counter_runtime', 'counter_percentage_of_runtime', 'metric_value',
+    fields = ['value', 'unit', 'event', 'variance', 'counter_runtime', 'counter_percentage_of_runtime', 'metric_value',
               'metric_unit']
     rows = csv.DictReader(output, fields, delimiter=';')
 
-    measurements = {}
+    measurements = OrderedDict()
     for row in rows:
         measurements[row['event']] = row
     return measurements
