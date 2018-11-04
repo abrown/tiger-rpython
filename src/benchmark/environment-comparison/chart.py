@@ -30,7 +30,7 @@ def extract_execution_time_variance(results):
 # gather data from pickled files
 path_to_pickled_data = 'var'
 pickled_data_files = [join(path_to_pickled_data, file) for file in listdir(path_to_pickled_data) if
-                      file.endswith('.pkl')]
+                      file.startswith('environment-comparison') and file.endswith('.pkl')]
 pickled_data = OrderedDict()
 for file in pickled_data_files:
     with open(file, 'rb') as f:
@@ -38,7 +38,7 @@ for file in pickled_data_files:
 
 # find environment names
 environments = [env_name for env_name in pickled_data]
-logging.info("Found environments in %s/*.pkl files: %s" % (path_to_pickled_data, environments))
+logging.info("Found environment results in %s/*.pkl files: %s" % (path_to_pickled_data, environments))
 
 # find benchmark names
 benchmark_names = [extract_benchmark_name(cmd) for (cmd, _) in pickled_data[next(iter(pickled_data))]]
@@ -76,7 +76,7 @@ for env, benchmarks in pickled_data.items():
     # workaround for hatching, see https://stackoverflow.com/questions/5195466
     bar_indexes = [index + bar_width * bar_offset for index in range(len(benchmarks))]
     unhatched_style, hatched_style = next(bar_styles)
-    ax.bar(bar_indexes, normalized_times, bar_width, **unhatched_style)
+    ax.bar(bar_indexes, normalized_times, bar_width, yerr=error, **unhatched_style)
     ax.bar(bar_indexes, normalized_times, bar_width, yerr=error, label=env, **hatched_style)
     # original color bar: ax.bar([index + bar_width * bar_offset for index in range(len(benchmarks))], normalized_times, bar_width, label=env)
 
