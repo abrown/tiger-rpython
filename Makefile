@@ -54,8 +54,10 @@ benchmarks-suite: binaries
 	$(foreach program, $(shell find src/benchmark/suite/*.tig), ./src/benchmark/benchmark.sh $(program);)
 
 benchmarks-environment-comparison: binaries
-	#$(foreach program, $(shell find src/benchmark/environment-comparison/*.tig), /usr/bin/time ./bin/tiger-interpreter $(program);)
 	PYTHONPATH=. python src/benchmark/environment-comparison/benchmark.py
+
+benchmarks-jit-vs-no-jit: binaries
+	PYTHONPATH=. python src/benchmark/jit-vs-no-jit/benchmark.py
 
 
 venv:
