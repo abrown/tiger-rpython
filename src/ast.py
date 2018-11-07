@@ -306,6 +306,7 @@ class ArrayCreation(Exp):
             other.initial_value_expression) and self.length_expression.equals(
             other.length_expression) and self.type_id.equals(other.type_id)
 
+    @unroll_safe
     def evaluate(self, env):
         length = self.length_expression.evaluate(env)
         assert (isinstance(length, IntegerValue))
@@ -333,6 +334,7 @@ class RecordCreation(Exp):
         return RPythonizedObject.equals(self, other) and self.type_id.equals(other.type_id) \
                and dict_equals(self.fields, other.fields)
 
+    @unroll_safe
     def evaluate(self, env):
         type = env.get_type((self.type_id.level, self.type_id.index))
         assert (isinstance(type, RecordType))
@@ -485,6 +487,7 @@ class FunctionCall(Exp):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and list_equals(self.arguments, other.arguments)
 
+    @unroll_safe # TODO is this correct?
     def evaluate(self, env):
         # find declaration
         declaration = env.get((self.level, self.index))
@@ -548,6 +551,7 @@ class If(Exp):
                and self.body_if_true.equals(other.body_if_true) \
                and nullable_equals(self.body_if_false, other.body_if_false)
 
+    @unroll_safe
     def evaluate(self, env):
         condition_value = self.condition.evaluate(env)
         assert isinstance(condition_value, IntegerValue)
@@ -625,6 +629,7 @@ class For(Exp):
             )
         ])
 
+    @unroll_safe
     def evaluate(self, env):
         self.while_expression.evaluate(env)
         return None
@@ -633,6 +638,7 @@ class For(Exp):
 class Break(Exp):
     _immutable_ = True
 
+    @unroll_safe
     def evaluate(self, env):
         raise BreakException()
 
@@ -805,6 +811,7 @@ class TypeDeclaration(Declaration):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name and self.type.equals(other.type)
 
+    @unroll_safe
     def evaluate(self, env):
         env.set_type((0, self.index), self.type)
 
@@ -826,6 +833,7 @@ class VariableDeclaration(Declaration):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and nullable_equals(self.type, other.type) and self.exp.equals(other.exp)
 
+    @unroll_safe
     def evaluate(self, env):
         value = self.exp.evaluate(env)
         # TODO type-check
