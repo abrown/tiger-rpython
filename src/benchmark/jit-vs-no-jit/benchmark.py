@@ -1,4 +1,5 @@
 import logging
+import os
 import pickle
 from collections import OrderedDict
 from os import listdir
@@ -7,7 +8,7 @@ from os.path import join, basename
 import matplotlib.pyplot as plt
 
 from src.benchmark.charting import cycle_bar_styles
-from src.benchmark.perf import analyze, run_command
+from src.benchmark.perf import analyze
 
 # setup logging
 logging.basicConfig(level=logging.INFO)
@@ -91,9 +92,11 @@ ax.set_xticklabels(benchmark_names)
 ax.legend()  # re-enable if we keep ax.bar(..., label='...')
 fig.tight_layout()  # necessary to re-position axis labels
 
-# display plot
-plt.show()
-
-# save files
-# plt.savefig('var/jit-vs-no-jit.pdf')
-# plt.savefig('var/jit-vs-no-jit.pgf')  # use this in LaTex, see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
+if os.getenv('SAVE', 0):
+    # save files
+    plt.savefig('var/jit-vs-no-jit.pdf')
+    plt.savefig(
+        'var/jit-vs-no-jit.pgf')  # use this in LaTex, see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
+else:
+    # display plot
+    plt.show()

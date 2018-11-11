@@ -1,4 +1,5 @@
 import logging
+import os
 import pickle
 from collections import OrderedDict
 from os import listdir
@@ -10,6 +11,7 @@ from src.benchmark.charting import cycle_bar_styles
 
 # setup logging
 logging.basicConfig(level=logging.INFO)
+
 
 # the charting is done separately from benchmark.py because we must gather benchmarks from different code branches in
 # var/environment-comparison-*.pkl before charting them (some amount of manual work needed)
@@ -24,6 +26,7 @@ def extract_benchmark_name(cmd):
 
 def extract_execution_time(results):
     return float(results['task-clock']['value'])
+
 
 def extract_execution_time_variance(results):
     return float(results['task-clock']['variance'].replace('%', '')) / 100
@@ -49,8 +52,6 @@ logging.info("Found benchmark names in first result set: %s" % benchmark_names)
 # find the times used for normalizing all other times
 normalization_times = [extract_execution_time(results) for (_, results) in pickled_data['master']]
 logging.info("Found times to normalize by in 'master' result set: %s" % normalization_times)
-
-
 
 # draw plot
 
@@ -92,9 +93,11 @@ ax.set_xticklabels(benchmark_names)
 ax.legend()  # re-enable if we keep ax.bar(..., label='...')
 fig.tight_layout()  # necessary to re-position axis labels
 
-# display plot
-plt.show()
-
-# save files
-# plt.savefig('var/environment-comparison.pdf')
-# plt.savefig('var/environment-comparison.pgf')  # use this in LaTex, see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
+if os.getenv('SAVE', 0):
+    # save files
+    plt.savefig('var/environment-comparison.pdf')
+    plt.savefig(
+        'var/environment-comparison.pgf')  # use this in LaTex, see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
+else:
+    # display plot
+    plt.show()
