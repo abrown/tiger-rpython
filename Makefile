@@ -59,6 +59,10 @@ benchmarks-environment-comparison: binaries
 benchmarks-jit-vs-no-jit: binaries
 	PYTHONPATH=. python src/benchmark/jit-vs-no-jit/benchmark.py
 
+benchmarks-warmup: binaries
+	PYTHONPATH=. python src/benchmark/warmup/benchmark.py
+
+
 
 venv:
 	python -m virtualenv --python=/usr/bin/python2.7 venv
