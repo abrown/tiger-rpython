@@ -49,6 +49,7 @@ plt.rcParams['pgf.rcfonts'] = False
 fig, ax = plt.subplots()
 
 # draw bars
+normalization_times = [extract_execution_time(results) for (_, results) in data['jit']]
 bar_width = 0.25
 bar_offset = 0
 bar_styles = cycle_bar_styles()
@@ -57,22 +58,27 @@ for env, benchmarks in data.items():
     assert names == benchmark_names, "Benchmarks must all be in the same order"
 
     times = [extract_execution_time(results) for (_, results) in benchmarks]
+    logging.info("Raw times: %s" % zip(names, times))
+    normalized_times = [time / normalization_time for (time, normalization_time) in zip(times, normalization_times)]
+
     time_variance = [extract_execution_time_variance(results) for (_, results) in benchmarks]
-    error = [time * variance for (time, variance) in zip(times, time_variance)]
-    logging.info("Creating bar for %s: %s (error: %s)" % (env, times, error))
+    logging.info("Raw variance: %s" % zip(names, time_variance))
+    error = [normalized_time * variance for (normalized_time, variance) in zip(normalized_times, time_variance)]
+
+    logging.info("Creating bar for %s: %s (error: %s)" % (env, normalized_times, error))
 
     # workaround for hatching, see https://stackoverflow.com/questions/5195466
     bar_indexes = [index + bar_width * bar_offset for index in range(len(benchmarks))]
     unhatched_style, hatched_style = next(bar_styles)
-    ax.bar(bar_indexes, times, bar_width, yerr=error, **unhatched_style)
-    ax.bar(bar_indexes, times, bar_width, yerr=error, label=env, **hatched_style)
+    ax.bar(bar_indexes, normalized_times, bar_width, yerr=error, **unhatched_style)
+    ax.bar(bar_indexes, normalized_times, bar_width, yerr=error, label=env, **hatched_style)
     # original color bar: ax.bar([index + bar_width * bar_offset for index in range(len(benchmarks))],
     #   normalized_times, bar_width, label=env)
 
     bar_offset += 1
 
 ax.set_xlabel('Benchmarks')
-ax.set_ylabel('Task time in seconds (lower is better)')
+ax.set_ylabel('Task time normalized to JIT (lower is better)')
 ax.set_title('Benchmark Task Times with JIT enabled/disabled')
 ax.set_xticks([index + bar_width * (len(data) - 1) / 2 for index in range(len(benchmark_names))])
 ax.set_xticklabels(benchmark_names)
