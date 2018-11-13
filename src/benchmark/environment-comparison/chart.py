@@ -8,38 +8,28 @@ from os.path import join, basename
 import matplotlib.pyplot as plt
 
 from src.benchmark.charting import cycle_bar_styles
+from src.benchmark.extract import extract_benchmark_name, extract_execution_time, extract_execution_time_variance
 
 # setup logging
+
 logging.basicConfig(level=logging.INFO)
 
 
 # the charting is done separately from benchmark.py because we must gather benchmarks from different code branches in
 # var/environment-comparison-*.pkl before charting them (some amount of manual work needed)
 
-def extract_environment_name(file):
-    return basename(file).replace('.pkl', '').replace('environment-comparison-', '')
-
-
-def extract_benchmark_name(cmd):
-    return basename(cmd).replace('.tig', '')
-
-
-def extract_execution_time(results):
-    return float(results['task-clock']['value'])
-
-
-def extract_execution_time_variance(results):
-    return float(results['task-clock']['variance'].replace('%', '')) / 100
+def extract_environment_name(path):
+    return basename(path).replace('.pkl', '').replace('environment-comparison-', '')
 
 
 # gather data from pickled files
 path_to_pickled_data = 'var'
-pickled_data_files = [join(path_to_pickled_data, file) for file in listdir(path_to_pickled_data) if
-                      file.startswith('environment-comparison') and file.endswith('.pkl')]
+pickled_data_files = [join(path_to_pickled_data, file_path) for file_path in listdir(path_to_pickled_data) if
+                      file_path.startswith('environment-comparison') and file_path.endswith('.pkl')]
 pickled_data = OrderedDict()
-for file in pickled_data_files:
-    with open(file, 'rb') as f:
-        pickled_data[extract_environment_name(file)] = pickle.load(f)
+for file_path in pickled_data_files:
+    with open(file_path, 'rb') as f:
+        pickled_data[extract_environment_name(file_path)] = pickle.load(f)
 
 # find environment names
 environments = [env_name for env_name in pickled_data]
@@ -50,12 +40,13 @@ benchmark_names = [extract_benchmark_name(cmd) for (cmd, _) in pickled_data[next
 logging.info("Found benchmark names in first result set: %s" % benchmark_names)
 
 # find the times used for normalizing all other times
-normalization_times = [extract_execution_time(results) for (_, results) in pickled_data['master']]
-logging.info("Found times to normalize by in 'master' result set: %s" % normalization_times)
+normalization_times = [extract_execution_time(results) for (_, results) in pickled_data['env-with-paths-unabstracted']]
+logging.info("Found times to normalize by in 'env-with-paths-unabstracted' result set: %s" % normalization_times)
 
 # draw plot
 
-# necessary for LaTex PGF plots, see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
+# necessary for LaTex PGF plots,
+# see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
 plt.rcParams['pgf.rcfonts'] = False
 
 # bar plot adapted from https://matplotlib.org/gallery/statistics/barchart_demo.html
@@ -81,12 +72,13 @@ for env, benchmarks in pickled_data.items():
     unhatched_style, hatched_style = next(bar_styles)
     ax.bar(bar_indexes, normalized_times, bar_width, yerr=error, **unhatched_style)
     ax.bar(bar_indexes, normalized_times, bar_width, yerr=error, label=env, **hatched_style)
-    # original color bar: ax.bar([index + bar_width * bar_offset for index in range(len(benchmarks))], normalized_times, bar_width, label=env)
+    # original color bar: ax.bar([index + bar_width * bar_offset for index in range(len(benchmarks))],
+    #   normalized_times, bar_width, label=env)
 
     bar_offset += 1
 
 ax.set_xlabel('Benchmarks')
-ax.set_ylabel('Task time (normalized to master, lower is better)')
+ax.set_ylabel('Task time (normalized to env-with-paths-unabstracted, lower is better)')
 ax.set_title('Benchmark Task Times by Environment Implementation')
 ax.set_xticks([index + bar_width * (len(pickled_data) - 1) / 2 for index in range(len(benchmark_names))])
 ax.set_xticklabels(benchmark_names)
@@ -96,8 +88,8 @@ fig.tight_layout()  # necessary to re-position axis labels
 if os.getenv('SAVE', 0):
     # save files
     plt.savefig('var/environment-comparison.pdf')
-    plt.savefig(
-        'var/environment-comparison.pgf')  # use this in LaTex, see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
+    plt.savefig('var/environment-comparison.pgf')
+    # use this in LaTex, see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
 else:
     # display plot
     plt.show()

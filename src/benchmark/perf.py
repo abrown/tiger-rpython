@@ -8,14 +8,15 @@ from collections import OrderedDict
 logging.basicConfig(level=logging.INFO)
 
 
-def run_command(*args):
+def run_command(*args, **kwargs):
     """
     Run a command, capturing the output
     :param args: a vararg list of the command to run
+    :param kwargs: any additional options to pass unmodified to popen, see https://docs.python.org/2/library/subprocess.html#subprocess.Popen
     :return: a tuple with the (stdout, stderr) strings or an exception is thrown
     """
     logging.info("Running: %s", ' '.join(args))
-    pipes = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    pipes = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs)
     stdout, stderr = pipes.communicate()
     if pipes.returncode != 0:
         # print stderr, stdout?

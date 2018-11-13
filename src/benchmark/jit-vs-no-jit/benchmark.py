@@ -3,38 +3,23 @@ import os
 import pickle
 from collections import OrderedDict
 from os import listdir
-from os.path import join, basename
+from os.path import join
 
 import matplotlib.pyplot as plt
 
 from src.benchmark.charting import cycle_bar_styles
+from src.benchmark.extract import extract_benchmark_name, extract_execution_time, extract_execution_time_variance
 from src.benchmark.perf import analyze
 
 # setup logging
 logging.basicConfig(level=logging.INFO)
 
-
-def extract_environment_name(file):
-    return basename(file).replace('.pkl', '').replace('environment-comparison-', '')
-
-
-def extract_benchmark_name(cmd):
-    return basename(cmd).replace('.tig', '')
-
-
-def extract_execution_time(results):
-    return float(results['task-clock']['value'])
-
-
-def extract_execution_time_variance(results):
-    return float(results['task-clock']['variance'].replace('%', '')) / 100
-
-
 # gather data
 path_to_jit_interpreter = 'bin/tiger-interpreter'
 path_to_no_jit_interpreter = 'bin/tiger-interpreter-no-jit'
 path_to_benchmarks = 'src/benchmark/jit-vs-no-jit'
-benchmark_programs = [join(path_to_benchmarks, file) for file in listdir(path_to_benchmarks) if file.endswith('.tig')]
+benchmark_programs = [join(path_to_benchmarks, file_path) for file_path in listdir(path_to_benchmarks)
+                      if file_path.endswith('.tig')]
 data = OrderedDict()
 data['jit'] = [analyze(path_to_jit_interpreter + ' ' + benchmark) for benchmark in benchmark_programs]
 data['no-jit'] = [analyze(path_to_no_jit_interpreter + ' ' + benchmark) for benchmark in benchmark_programs]
@@ -56,7 +41,8 @@ logging.info("Found benchmark names in first result set: %s" % benchmark_names)
 
 # draw plot
 
-# necessary for LaTex PGF plots, see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
+# necessary for LaTex PGF plots,
+# see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
 plt.rcParams['pgf.rcfonts'] = False
 
 # bar plot adapted from https://matplotlib.org/gallery/statistics/barchart_demo.html
@@ -80,7 +66,8 @@ for env, benchmarks in data.items():
     unhatched_style, hatched_style = next(bar_styles)
     ax.bar(bar_indexes, times, bar_width, yerr=error, **unhatched_style)
     ax.bar(bar_indexes, times, bar_width, yerr=error, label=env, **hatched_style)
-    # original color bar: ax.bar([index + bar_width * bar_offset for index in range(len(benchmarks))], normalized_times, bar_width, label=env)
+    # original color bar: ax.bar([index + bar_width * bar_offset for index in range(len(benchmarks))],
+    #   normalized_times, bar_width, label=env)
 
     bar_offset += 1
 
@@ -95,8 +82,8 @@ fig.tight_layout()  # necessary to re-position axis labels
 if os.getenv('SAVE', 0):
     # save files
     plt.savefig('var/jit-vs-no-jit.pdf')
-    plt.savefig(
-        'var/jit-vs-no-jit.pgf')  # use this in LaTex, see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
+    plt.savefig('var/jit-vs-no-jit.pgf')
+    # use this in LaTex, see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
 else:
     # display plot
     plt.show()
