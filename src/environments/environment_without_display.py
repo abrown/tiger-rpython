@@ -2,7 +2,7 @@
 from src.environments.environment_interface import EnvironmentInterface
 
 try:
-    from rpython.rlib.jit import JitDriver, elidable, promote, unroll_safe, jit_debug, we_are_jitted
+    from rpython.rlib.jit import JitDriver, elidable, hint, promote, unroll_safe, jit_debug, we_are_jitted
 except ImportError:
     class JitDriver(object):
         def __init__(self, **kw): pass
@@ -14,6 +14,10 @@ except ImportError:
 
     def elidable(func):
         return func
+
+
+    def hint(x, **kwds):
+        return x
 
 
     def promote(x):
@@ -41,9 +45,11 @@ class Environment(EnvironmentInterface):
     path to iterate through the parents and retrieve the index.
     """
     _immutable_ = True
-    #_virtualizable_ = ['parent', 'expressions[*]', 'types[*]']
+
+    # _virtualizable_ = ['parent', 'expressions[*]', 'types[*]']
 
     def __init__(self, parent, expressions, types):
+        self = hint(self, access_directly=True, fresh_virtualizable=True)
         self.parent = parent
         self.expressions = expressions
         self.types = types
@@ -115,7 +121,8 @@ class Environment(EnvironmentInterface):
 
     def clone(self):
         """Clone an environment by copying the stack shallowly"""
-        return Environment(self.parent, self.expressions, self.types)
+        return self
+        #return Environment(self.parent, [e for e in self.expressions], [t for t in self.types])
 
     @staticmethod
     @unroll_safe
