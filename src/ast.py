@@ -39,7 +39,7 @@ def get_location(code):
 
 
 jitdriver = JitDriver(greens=['code'], reds=['env', 'result', 'value'], get_printable_location=get_location)
-
+function_jitdriver = JitDriver(greens=['code'], reds='auto', get_printable_location=get_location)
 
 # jitdriver = JitDriver(greens=['code'], reds=['env', 'result', 'value'], virtualizables=['env'], get_printable_location=get_location)
 
@@ -487,8 +487,10 @@ class FunctionCall(Exp):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and list_equals(self.arguments, other.arguments)
 
-    @unroll_safe # TODO is this correct?
+    #@unroll_safe # TODO is this correct?
     def evaluate(self, env):
+        function_jitdriver.jit_merge_point(code=self)
+
         # find declaration
         declaration = env.get((self.level, self.index))
         if not declaration:
