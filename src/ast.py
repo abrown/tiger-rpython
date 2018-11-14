@@ -5,6 +5,7 @@ from src.rpythonized_object import RPythonizedObject, list_equals, dict_equals, 
 # Begin RPython setup; catch import errors so this can still run in CPython...
 try:
     from rpython.rlib.jit import JitDriver, elidable, promote, unroll_safe, jit_debug, we_are_jitted
+    from rpython.rlib.objectmodel import import_from_mixin, specialize
 except ImportError:
     class JitDriver(object):
         def __init__(self, **kw): pass
@@ -34,14 +35,31 @@ except ImportError:
         return False
 
 
+    def import_from_mixin(M, special_methods=['__init__', '__del__']):
+        pass
+
+
+    class specialize(object):
+        @staticmethod
+        def argtype(self, *args):
+            def decorated_func(func):
+                return func
+
+            return decorated_func
+
+
+# specialize necessary because get_location is used by two different jitdrivers passing in different types (While and
+# FunctionCall); normally RPython could resolve these to Exp but this is a late-stage annotation issue and types
+# cannot be changed
+@specialize.argtype(0)
 def get_location(code):
     return "%s" % code.to_string()
 
 
-jitdriver = JitDriver(greens=['code'], reds=['env', 'result', 'value'], get_printable_location=get_location)
-function_jitdriver = JitDriver(greens=['code'], reds='auto', get_printable_location=get_location)
-
-# jitdriver = JitDriver(greens=['code'], reds=['env', 'result', 'value'], virtualizables=['env'], get_printable_location=get_location)
+# to virtualize: jitdriver = JitDriver(greens=['code'], reds=['env', 'result', 'value'], virtualizables=['env'], get_printable_location=get_location)
+while_jitdriver = JitDriver(greens=['code'], reds=['env', 'result', 'value'], get_printable_location=get_location)
+function_jitdriver = JitDriver(greens=['code'], reds='auto', is_recursive=True,
+                               get_printable_location=get_location)
 
 
 def jitpolicy(driver):
@@ -50,13 +68,6 @@ def jitpolicy(driver):
         return JitPolicy()
     except ImportError:
         raise NotImplemented("Abandon if we are unable to use RPython's JitPolicy")
-
-
-try:
-    from rpython.rlib.objectmodel import import_from_mixin
-except ImportError:
-    def import_from_mixin(M, special_methods=['__init__', '__del__']):
-        pass
 
 
 # end of RPython setup
@@ -487,7 +498,7 @@ class FunctionCall(Exp):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and list_equals(self.arguments, other.arguments)
 
-    #@unroll_safe # TODO is this correct?
+    @unroll_safe
     def evaluate(self, env):
         function_jitdriver.jit_merge_point(code=self)
 
@@ -495,7 +506,7 @@ class FunctionCall(Exp):
         declaration = env.get((self.level, self.index))
         if not declaration:
             raise InterpretationError('Could not find function %s' % self.name)
-        #assert (isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration))
+        assert isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration)
 
         # check arguments
         if len(self.arguments) != len(declaration.parameters):
@@ -586,7 +597,7 @@ class While(Exp):
 
         result = None
         while condition_value.integer != 0:
-            jitdriver.jit_merge_point(code=self, env=env, result=result, value=condition_value)
+            while_jitdriver.jit_merge_point(code=self, env=env, result=result, value=condition_value)
             # attempted 'env = promote(env)' here but this let to incorrect number of inner loops in sumprimes
             try:
                 result = self.body.evaluate(env)
