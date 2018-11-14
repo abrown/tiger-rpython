@@ -61,6 +61,8 @@ for name, loop_times in data.items():
     plt.plot(index, loop_times, 'k')  # or 'k'
     i += 1
 
+plt.tight_layout()  # necessary to re-position axis labels
+
 if os.getenv('SAVE', 0):
     # save files
     plt.savefig('var/warmup.pdf')
