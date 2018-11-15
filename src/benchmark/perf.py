@@ -65,7 +65,8 @@ def parse_perf_output(output):
 
     measurements = OrderedDict()
     for row in rows:
-        measurements[row['event']] = row
+        event = row['event'].replace(':u', '')
+        measurements[event] = row
     return measurements
 
 
