@@ -85,7 +85,7 @@ for env, benchmarks in pickled_data.items():
     bar_offset += 1
 
 ax.set_xlabel('Benchmarks')
-ax.set_ylabel('Task time (normalized to env-with-paths-unabstracted, lower is better)')
+ax.set_ylabel('Task time (normalized to unabstracted, lower is better)')
 ax.set_title('Benchmark Task Times by Environment Implementation')
 ax.set_xticks([index + bar_width * (len(pickled_data) - 1) / 2 for index in range(len(benchmark_names))])
 ax.set_xticklabels(benchmark_names)

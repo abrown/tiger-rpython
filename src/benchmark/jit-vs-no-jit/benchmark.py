@@ -86,8 +86,8 @@ for env, benchmarks in data.items():
     bar_offset += 1
 
 ax.set_xlabel('Benchmarks')
-ax.set_ylabel('Task time normalized to JIT (lower is better)')
-ax.set_title('Benchmark Task Times with JIT enabled/disabled')
+ax.set_ylabel('Task time (normalized to JIT, lower is better)')
+ax.set_title('Benchmark Task Times with JIT Enabled/Disabled')
 ax.set_xticks([index + bar_width * (len(data) - 1) / 2 for index in range(len(benchmark_names))])
 ax.set_xticklabels(benchmark_names)
 ax.legend()  # re-enable if we keep ax.bar(..., label='...')
