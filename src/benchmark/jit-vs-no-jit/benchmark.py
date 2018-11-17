@@ -39,6 +39,14 @@ logging.info("Found environments: %s" % environments)
 benchmark_names = [extract_benchmark_name(cmd) for (cmd, _) in data[environments[0]]]
 logging.info("Found benchmark names in first result set: %s" % benchmark_names)
 
+# calculate average difference between environments
+jit_times = [extract_execution_time(results) for (_, results) in data['jit']]
+no_jit_times = [extract_execution_time(results) for (_, results) in data['no-jit']]
+times_diff = [no_jit / jit for (no_jit, jit) in zip(no_jit_times, jit_times)]
+geometric_mean = reduce(lambda x, y: x * y, times_diff) ** (1.0 / len(times_diff))
+logging.info("Geometric mean of the speedup of JIT over non-JIT: %s", geometric_mean)
+
+
 # draw plot
 
 # necessary for LaTex PGF plots,

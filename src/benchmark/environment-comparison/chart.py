@@ -43,6 +43,13 @@ logging.info("Found benchmark names in first result set: %s" % benchmark_names)
 normalization_times = [extract_execution_time(results) for (_, results) in pickled_data['env-with-paths-unabstracted']]
 logging.info("Found times to normalize by in 'env-with-paths-unabstracted' result set: %s" % normalization_times)
 
+# calculate average difference between environments
+for env, benchmarks in pickled_data.items():
+    times = [extract_execution_time(results) for (_, results) in benchmarks]
+    times_diff = [time / normalization_time for (time, normalization_time) in zip(times, normalization_times)]
+    geometric_mean = reduce(lambda x, y: x * y, times_diff) ** (1.0 / len(times_diff))
+    logging.info("Geometric mean of the speedup of env-with-paths-unabstracted over %s: %s", env, geometric_mean)
+
 # draw plot
 
 # necessary for LaTex PGF plots,
