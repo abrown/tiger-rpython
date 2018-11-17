@@ -1,5 +1,5 @@
-PYPY=../pypy
-RPYTHON=../pypy/rpython/bin/rpython
+PYPY?=../pypy
+RPYTHON?=${PYPY}/rpython/bin/rpython
 VERSION=0.1
 
 all: test
@@ -53,13 +53,13 @@ benchmarks-sumprimes: binaries
 benchmarks-suite: binaries
 	$(foreach program, $(shell find src/benchmark/suite/*.tig), ./src/benchmark/benchmark.sh $(program);)
 
-benchmarks-environment-comparison: binaries
+benchmarks-environment-comparison: bin/tiger-interpreter
 	PYTHONPATH=. python src/benchmark/environment-comparison/benchmark.py
 
 benchmarks-jit-vs-no-jit: binaries
 	PYTHONPATH=. python src/benchmark/jit-vs-no-jit/benchmark.py
 
-benchmarks-warmup: binaries
+benchmarks-warmup: bin/tiger-interpreter
 	PYTHONPATH=. python src/benchmark/warmup/benchmark.py
 
 
