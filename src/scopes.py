@@ -1,24 +1,17 @@
 from src.ast import Exp, Sequence, FunctionDeclaration, FunctionCall, Let, BinaryOperation, LValue, Program, \
     TypeDeclaration, ArrayCreation, VariableDeclaration, For, While, If, Assign, \
-    RecordCreation, ArrayLValue, RecordLValue, TypeId
-
-NATIVE_FUNCTION_NAMES = [
-    'print'
-]
-
-NATIVE_TYPES = [
-    'int'
-]
+    RecordCreation, ArrayLValue, RecordLValue, TypeId, Declaration, FunctionParameter, NativeFunctionDeclaration
 
 
-def transform_lvalues(exp, existing_names=None, existing_types=None):
+def transform_lvalues(exp, existing_declarations=None):
     """
     :param exp: the root expression of an AST
+    :param existing_declarations: a list of already-available declarations in this scope
     :return: nothing, but alter each LValue in the AST to contain a path to its declaration
     """
     assert isinstance(exp, Exp)
 
-    transformer = LValueTransformer(existing_names or NATIVE_FUNCTION_NAMES, existing_types or NATIVE_TYPES)
+    transformer = LValueTransformer(existing_declarations or [])
     for node in DepthFirstAstIterator(exp):
         transformer.transform(node)
 
@@ -136,35 +129,17 @@ class LValueTransformer:
     maintains state--the observed scopes as the AST is traversed in depth-first fashion
     """
 
-    def __init__(self, existing_names=None, existing_types=None):
-        self.variable_scopes = [] or [existing_names]
-        assert isinstance(self.variable_scopes, list)
-        self.type_scopes = [] or [existing_types]
-        assert isinstance(self.variable_scopes, list)
+    def __init__(self, existing_declarations=None):
+        self.scopes = existing_declarations or []
+        assert isinstance(self.scopes, list)
 
     def transform(self, node):
         if isinstance(node, Let):
-            variables = []
-            types = []
-
-            # TODO need to separate out type declarations and binding declarations
+            self.scopes.append(node)
             for i in range(len(node.declarations)):
-                declaration = node.declarations[i]
-                if isinstance(declaration, TypeDeclaration):
-                    declaration.index = len(types)
-                    types.append(declaration.name)
-                else:
-                    declaration.index = len(variables)
-                    variables.append(declaration.name)
-
-            self.variable_scopes.append(variables)
-            self.type_scopes.append(types)
-
+                node.declarations[i].index = i
         elif isinstance(node, FunctionDeclaration):
-            names = [parameter.name for parameter in node.parameters]
-            names.insert(0, node.name)
-            self.variable_scopes.append(names)
-            self.type_scopes.append([])
+            self.scopes.append(node)
         elif isinstance(node, LValue):
             if isinstance(node, ArrayLValue):
                 # if an expression is used to index into the array, it will be transformed as we iterate over the tree
@@ -173,25 +148,42 @@ class LValueTransformer:
                 # TODO eventually store records as arrays and index into the array here
                 pass
             else:
-                node.level, node.index = self.find_variable(node.name)
+                node.declaration = self.find_declaration(node.name, [VariableDeclaration, FunctionParameter])
         elif isinstance(node, FunctionCall):
-            node.level, node.index = self.find_variable(node.name)
+            node.declaration = self.find_declaration(node.name, [FunctionDeclaration, NativeFunctionDeclaration])
         elif isinstance(node, TypeId):
-            node.level, node.index = self.find_type(node.name)
+            node.declaration = self.find_declaration(node.name, [TypeDeclaration])
         elif isinstance(node, ExitScope):
-            self.variable_scopes.pop()
-            self.type_scopes.pop()
+            self.scopes.pop()
 
-    def find_variable(self, name):
-        return self.find(name, self.variable_scopes)
+    def find_declaration(self, name, expected_types):
+        declaration = self.find(name, self.scopes)
+        for expected_type in expected_types:
+            if isinstance(declaration, expected_type):
+                return declaration
+        expected_types_string = '[%s]' % (', '.join([et.__name__ for et in expected_types]))
+        raise ScopeError('Expected to find a declaration of type %s for name %s but instead found %s' % (
+            expected_types_string, name, declaration.__class__.__name__))
 
-    def find_type(self, name):
-        return self.find(name, self.type_scopes)
+    @staticmethod
+    def find(name, scopes):
+        # examine in reverse order
+        for i in range(len(scopes) - 1, -1, -1):
+            scope = scopes[i]
+            if isinstance(scope, Let):
+                for declaration in scope.declarations:
+                    assert isinstance(declaration, Declaration)
+                    if declaration.name == name:
+                        return declaration
+            elif isinstance(scope, FunctionDeclaration) or isinstance(scope, NativeFunctionDeclaration):
+                # TODO RPython may not be able to handle this sort of unification
+                if scope.name == name:
+                    return scope
+                for parameter in scope.parameters:
+                    assert isinstance(parameter, FunctionParameter)
+                    if parameter.name == name:
+                        return parameter
+            else:
+                raise ScopeError('Unknown scope type; should be a Let or FunctionDeclaration: %s' % scope)
 
-    def find(self, name, scopes):
-        for level in range(len(scopes)):
-            scope = scopes[len(scopes) - (level + 1)]
-            for index in range(len(scope)):
-                if scope[index] == name:
-                    return level, index
         raise ScopeError('Unable to find the name %s in the enclosing scopes' % name)

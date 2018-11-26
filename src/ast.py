@@ -109,15 +109,32 @@ class Declaration(Program):
 
     def __init__(self, name, index=0):
         self.name = name
-        self.index = index
+        self.index = index  # TODO remove? is this really used
 
     def evaluate(self, env):
         raise InterpretationError('Declaration evaluation must be overriden by subclasses')
+
+    def resolve(self):
+        raise InterpretationError('Declaration resolution must be overriden by subclasses')
+
+
+class Bound(Exp):
+    _immutable_ = True
+
+    def __init__(self, declaration):
+        self.declaration = declaration
 
 
 class Type(Program):
     _immutable_ = True
     pass
+
+
+class Binding(Exp):
+    _immutable_ = True
+
+    def __init__(self, number_of_binding_values):
+        self.binding_values = Environment.empty(number_of_binding_values)
 
 
 # VALUES
@@ -230,18 +247,17 @@ class RecordValue(Value):
 # EXPRESSIONS: LOCATORS AND STRUCTURE
 
 
-class LValue(Exp):
+class LValue(Bound):
     _immutable_ = True
 
-    def __init__(self, name, next=None, level=0, index=0):
+    def __init__(self, name, next=None, declaration=None):
+        Bound.__init__(self, declaration)
         self.name = name
         self.next = next
-        self.level = level
-        self.index = index
 
     def to_string(self):
-        return '%s(name=%s, next=%s, level=%s, index=%s)' % (
-            self.__class__.__name__, self.name, nullable_to_string(self.next), self.level, self.index)
+        return '%s(name=%s, next=%s, declaration=%s)' % (
+            self.__class__.__name__, self.name, nullable_to_string(self.next), nullable_to_string(self.declaration))
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
@@ -253,7 +269,7 @@ class LValue(Exp):
 
         # extract normal lvalue from environment
         assert (isinstance(lvalue, LValue))
-        value = env.get((self.level, self.index))
+        value = self.declaration.resolve()
         lvalue = lvalue.next
 
         # iterate over records and arrays
@@ -447,7 +463,7 @@ class Let(Exp):
 
     def __init__(self, declarations, expressions):
         self.declarations = declarations
-        self.expressions = expressions
+        self.expressions = expressions  # the body of the let-binding; a sequence of expressions
 
     def to_string(self):
         return '%s(declarations=%s, expressions=%s)' % (
@@ -480,19 +496,18 @@ class Let(Exp):
 # EXPRESSIONS: CONTROL FLOW
 
 
-class FunctionCall(Exp):
+class FunctionCall(Bound):
     _immutable_ = True
 
-    def __init__(self, name, arguments, level=0, index=0):
+    def __init__(self, name, arguments, declaration=None):
+        Bound.__init__(self, declaration)
         self.name = name
         assert (isinstance(arguments, list))
         self.arguments = arguments
-        self.level = level
-        self.index = index
 
     def to_string(self):
-        return '%s(name=%s, level=%d, index=%d, args=%s)' % (
-            self.__class__.__name__, self.name, self.level, self.index, list_to_string(self.arguments))
+        return '%s(name=%s, args=%s)' % (
+            self.__class__.__name__, self.name, list_to_string(self.arguments))
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
@@ -503,7 +518,7 @@ class FunctionCall(Exp):
         function_jitdriver.jit_merge_point(code=self)
 
         # find declaration
-        declaration = env.get((self.level, self.index))
+        declaration = self.declaration.resolve()
         if not declaration:
             raise InterpretationError('Could not find function %s' % self.name)
         assert isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration)
@@ -514,6 +529,7 @@ class FunctionCall(Exp):
                 len(self.arguments), len(declaration.parameters), self.name))
 
         # use declaration environment for function call (note: push() allows us to reuse the frame)
+        # TODO push declaration environment and pop at the end
         activation_environment = declaration.environment.clone()
         activation_environment = activation_environment.push(len(declaration.parameters) + 1)
         activation_environment.set((0, 0), declaration)
@@ -795,13 +811,12 @@ class Or(BinaryOperation):
 # DECLARATIONS
 
 
-class TypeId(Declaration):
+class TypeId(Bound):
     _immutable_ = True
 
-    def __init__(self, name, level=0, index=0):
-        Declaration.__init__(self, name)
-        self.level = level
-        self.index = index
+    def __init__(self, name, declaration=None):
+        Bound.__init__(self, declaration)
+        self.name = name
 
     def to_string(self):
         return '%s(name=%s)' % (self.__class__.__name__, self.name)
@@ -815,7 +830,7 @@ class TypeDeclaration(Declaration):
 
     def __init__(self, name, type, index=0):
         Declaration.__init__(self, name)
-        self.type = type
+        self.type = type  # note that type here can be either a Type (record, array) or a TypeId
         self.index = index
 
     def to_string(self):

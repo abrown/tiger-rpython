@@ -67,10 +67,10 @@ class Parser:
     def __init__(self, text, file=None):
         self.tokenizer = Tokenizer(text, file)
 
-    def parse(self, native_function_names=None):
+    def parse(self, native_function_declarations=None):
         expression = self.expression()
-        if native_function_names:
-            transform_lvalues(expression, native_function_names)
+        if native_function_declarations:
+            transform_lvalues(expression, native_function_declarations)
         return expression
 
     # recursive descent parse methods (organized alphabetically)

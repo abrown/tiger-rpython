@@ -2,14 +2,16 @@ import unittest
 
 from src.ast import LValue, Let, FunctionDeclaration, FunctionCall, VariableDeclaration, \
     FunctionParameter, Add, IntegerValue, Declaration, Assign, RecordCreation, StringValue, RecordLValue, ArrayLValue, \
-    TypeId
+    TypeId, NativeOneArgumentFunctionDeclaration
 from src.parser import Parser
 from src.scopes import DepthFirstAstIterator, ExitScope
 
 
 class TestScopeTransformations(unittest.TestCase):
     def to_program(self, text, absolutize_lvalues=True):
-        program = Parser(text).parse(['print'] if absolutize_lvalues else None)
+        print_declaration = NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('message', TypeId('str'))],
+                                                                 TypeId('nil'), lambda s: None)
+        program = Parser(text).parse([print_declaration] if absolutize_lvalues else None)
         return program
 
     def ast_to_list(self, expression):
@@ -23,14 +25,15 @@ class TestScopeTransformations(unittest.TestCase):
             if isinstance(exp, type):
                 yield exp
 
-    def assertLocationIs(self, lvalue, location):
+    def assertBoundTo(self, lvalue, declaration):
         assert isinstance(lvalue, LValue)
-        assert isinstance(location, tuple)
+        assert isinstance(declaration, Declaration)
 
-        self.assertEqual(location[0], lvalue.level,
-                         'The level of LValue %s should be %d but is %d' % (lvalue.name, location[0], lvalue.level))
-        self.assertEqual(location[1], lvalue.index,
-                         'The index of LValue %s should be %d but is %d' % (lvalue.name, location[1], lvalue.index))
+        self.assertEqual(declaration, lvalue.declaration, 'LValue %s should be bound to %s but is bound to %s' % (
+            lvalue.name, declaration, lvalue.declaration))
+        self.assertEqual(declaration.name, lvalue.name,
+                         'LValue %s should be have the same name as declaration %s but does not: %s != %s' % (
+                             lvalue, declaration, lvalue.name, declaration.name))
 
     def assertListTypesEqual(self, type_list, instance_list):
         self.assertEqual(len(type_list), len(instance_list))
@@ -68,21 +71,25 @@ class TestScopeTransformations(unittest.TestCase):
 
     def test_let(self):
         program = self.to_program("let var x := 42 in x + 42 end")
+        x_declared = self.find_first_expression(program, VariableDeclaration)
         x_used = self.find_first_expression(program, LValue)
 
-        self.assertLocationIs(x_used, (0, 0))
+        self.assertBoundTo(x_used, x_declared)
 
     def test_let_nested(self):
         program = self.to_program("let var x := 42 in let var y := 43 in x + y end end")
-        x_used = self.find_first_expression(program, LValue)
+        x_declared, y_declared = self.find_all_expressions(program, VariableDeclaration)
+        x_used, y_used = self.find_all_expressions(program, LValue)
 
-        self.assertLocationIs(x_used, (1, 0))
+        self.assertBoundTo(x_used, x_declared)
+        self.assertBoundTo(y_used, y_declared)
 
     def test_let_multiple(self):
         program = self.to_program("let var x := 42 var y := 43 in y + x end")
+        x_declared, y_declared = self.find_all_expressions(program, VariableDeclaration)
         y_used = self.find_first_expression(program, LValue)
 
-        self.assertLocationIs(y_used, (0, 1))
+        self.assertBoundTo(y_used, y_declared)
 
     def test_let_in_function_call(self):
         program = self.to_program("""
@@ -97,9 +104,10 @@ class TestScopeTransformations(unittest.TestCase):
                 end
         end
         """)
+        print_declared, f_declared, x_declared, _ = self.find_all_expressions(program, Declaration)
         x_used = self.find_first_expression(program, LValue)
 
-        self.assertLocationIs(x_used, (0, 1))  # the function name takes the first index slot
+        self.assertBoundTo(x_used, x_declared)
 
     def test_let_redefined_outside_function_call(self):
         program = self.to_program("""
@@ -117,10 +125,11 @@ class TestScopeTransformations(unittest.TestCase):
             end
         end
         """)
+        y_declared, f_declared, x_declared, y_declared_again = self.find_all_expressions(program, Declaration)
         y_used_first, y_used_second = self.find_all_expressions(program, LValue)
 
-        self.assertLocationIs(y_used_first, (2, 0))  # y is from the first 'let' scope
-        self.assertLocationIs(y_used_second, (0, 0))  # y is local to the third 'let y' scope
+        self.assertBoundTo(y_used_first, y_declared)  # y is from the first 'let' scope
+        self.assertBoundTo(y_used_second, y_declared_again)  # y is local to the third 'let y' scope
 
     def test_leaving_let(self):
         program = self.to_program("""
@@ -133,11 +142,12 @@ class TestScopeTransformations(unittest.TestCase):
             let var y := 42 in print(x) end)
         end
         """)
+        x_declared = self.find_first_expression(program, VariableDeclaration)
         x_used_first, x_used_second, x_used_third = self.find_all_expressions(program, LValue)
 
-        self.assertLocationIs(x_used_first, (1, 0))
-        self.assertLocationIs(x_used_second, (1, 0))
-        self.assertLocationIs(x_used_third, (1, 0))
+        self.assertBoundTo(x_used_first, x_declared)
+        self.assertBoundTo(x_used_second, x_declared)
+        self.assertBoundTo(x_used_third, x_declared)
 
     def test_indexing_of_let_bindings(self):
         program = self.to_program("""
@@ -168,9 +178,10 @@ class TestScopeTransformations(unittest.TestCase):
         """)
 
         l = next(self.find_all_expressions(program, LValue))
+        _, _, l_declared, _ = self.find_all_expressions(program, Declaration)
 
         self.assertEqual(l, LValue('l'))
-        self.assertEqual(1, l.index)
+        self.assertBoundTo(l, l_declared)
 
     def test_for_loop(self):
         program = self.to_program("""
@@ -180,11 +191,12 @@ class TestScopeTransformations(unittest.TestCase):
            end
         """)
 
-        p = next(self.find_all_expressions(program, FunctionCall))
+        p = self.find_first_expression(program, FunctionCall)
+        a_declared = self.find_first_expression(program, VariableDeclaration)
         _, a, _, _ = self.find_all_expressions(program, LValue)
 
-        self.assertEqual(1, a.level)
-        self.assertEqual(2, p.level)
+        self.assertBoundTo(a, a_declared)
+        self.assertEqual('print', p.declaration.name)
 
 
 if __name__ == '__main__':
