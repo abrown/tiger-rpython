@@ -7,33 +7,28 @@ from test_utilities import OutputContainer
 
 
 class TestEvaluating(unittest.TestCase):
+    def evaluate(self, program, *existing_declarations):
+        existing_declarations_ast = [Parser(decl).parse() if isinstance(decl, str) else decl for decl in
+                                     existing_declarations]
+        if not existing_declarations_ast:
+            # ensure we have at least one existing declaration or the parser will not run the lvalue-transformation pass
+            existing_declarations_ast.append(NativeNoArgumentFunctionDeclaration('unused', None, lambda: None))
+        assert all(isinstance(a, Program) for a in existing_declarations_ast)
+        assert isinstance(program, str)
+        program_ast = Parser(program).parse(existing_declarations_ast)
+        return program_ast.evaluate(Environment.empty())
+
     def test_function_call(self):
-        decl = FunctionDeclaration('add',
-                                   [FunctionParameter('a', TypeId('int')), FunctionParameter('b', TypeId('int'))],
-                                   TypeId('int'),
-                                   Add(LValue('a', None, 0, 1), LValue('b', None, 0, 2)))
-        call = FunctionCall('add', [IntegerValue(1), IntegerValue(1)])
-        env = Environment.empty().push(1)
-        env.set((0, 0), decl)
-
-        result = call.evaluate(env)
-
+        result = self.evaluate("add(1, 1)", "function add(a:int, b:int):int = a + b")
         self.assertEqual(IntegerValue(2), result)
-        self.assertEqual(1, env.size())
 
     def test_native_function_call(self):
-        decl = NativeOneArgumentFunctionDeclaration('square',
-                                                    [FunctionParameter('a', TypeId('int'))],
-                                                    TypeId('int'),
-                                                    lambda a: IntegerValue(a.integer * a.integer))
-        call = FunctionCall('square', [IntegerValue(7)])
-        env = Environment.empty().push(1)
-        env.set((0, 0), decl)
-
-        result = call.evaluate(env)
-
+        square_function = NativeOneArgumentFunctionDeclaration('square',
+                                                               [FunctionParameter('a', TypeId('int'))],
+                                                               TypeId('int'),
+                                                               lambda a: IntegerValue(a.integer * a.integer))
+        result = self.evaluate("square(7)", square_function)
         self.assertEqual(IntegerValue(49), result)
-        self.assertEqual(1, env.size())
 
     def test_array_creation(self):
         type = TypeId('int_array')
@@ -49,8 +44,7 @@ class TestEvaluating(unittest.TestCase):
         self.assertEqual(IntegerValue(4), result.array[0])
 
     def test_environment_affected_by_function_call(self):
-        """
-        /* equivalent code */
+        code = """
         let 
           function x() = a := 99
         in
@@ -58,56 +52,34 @@ class TestEvaluating(unittest.TestCase):
         end
         """
 
-        program = Let(
-            declarations=[
-                FunctionDeclaration(name='x', parameters=[], return_type=None,
-                                    body=Assign(lvalue=LValue(name='a', next=None, level=2, index=0),
-                                                expression=IntegerValue(99)))],
-            expressions=[FunctionCall(name='x', level=0, index=0, arguments=[])])
-        # note the manually assigned path for 'a'
-
         # set 'a := 42' in a pre-existing environment
-        env = Environment.empty().push(1)
-        env.set((0, 0), IntegerValue(42))
+        decl = Let([VariableDeclaration(name='a', type=None, expression=IntegerValue(42))], [])
 
         # run the function to program the environment
-        program.evaluate(env)
+        self.evaluate(code, decl)
 
-        self.assertEqual(IntegerValue(99), env.get((0, 0)))
+        self.assertEqual(IntegerValue(99), decl.environment.get(0))
 
     def test_scoped_environment_still_affected_by_function_call(self):
-        """
-        /* equivalent code */
-        let 
+        code = """
+        let
           function x() = a := 99
         in
           let 
-            var a := 0
+            var a := 0  // the difference between this test and the above is this re-assignment to 'a'
           in
             x()
           end
         end
         """
-        program = Let(
-            declarations=[
-                FunctionDeclaration(name='x', parameters=[], return_type=None,
-                                    body=Assign(lvalue=LValue(name='a', next=None, level=2, index=0),
-                                                expression=IntegerValue(99)))],
-            expressions=[
-                Let(
-                    declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
-                    expressions=[
-                        FunctionCall(name='x', level=1, index=0, arguments=[])])])
-        # note the manually assigned paths for 'a' and 'x'
 
         # set 'a := 42' in a pre-existing environment
-        env = Environment.empty().push(1)
-        env.set((0, 0), IntegerValue(42))
+        decl = Let([VariableDeclaration(name='a', type=None, expression=IntegerValue(42))], [])
 
         # run the function to change the environment and it should still affect the outer scope
-        program.evaluate(env)
+        self.evaluate(code, decl)
 
-        self.assertEqual(IntegerValue(99), env.get((0, 0)))
+        self.assertEqual(IntegerValue(99), decl.environment.get(0))
 
     def test_for_loop(self):
         code = """
@@ -116,17 +88,31 @@ class TestEvaluating(unittest.TestCase):
                 print(i)
             end
         """
-
-        program = Parser(code).parse(['print'])
         stdout = OutputContainer()
-        env = Environment.empty().push(1)
-        env.set((0, 0), NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('string', TypeId('string'))],
-                                                             None, stdout.capture))
+        print_function = NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('string', TypeId('string'))],
+                                                              None, stdout.capture)
 
-        result = program.evaluate(env)
+        result = self.evaluate(code, print_function)
 
         self.assertEqual(None, result)
         self.assertEqual("123456789", stdout.get_captured())
+
+    def test_function_recursion(self):
+        code = """
+        let
+          function a(n:int) : int =
+            if (n < 100) then
+              a(n+1)
+            else
+              n
+        in
+          a(1)
+        end
+        """
+
+        result = self.evaluate(code)
+
+        self.assertEqual(IntegerValue(100), result)
 
 
 if __name__ == '__main__':

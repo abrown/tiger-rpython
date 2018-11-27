@@ -269,7 +269,8 @@ class LValue(Bound):
 
         # extract normal lvalue from environment
         assert (isinstance(lvalue, LValue))
-        value = self.declaration.resolve()
+        env = lvalue.declaration.parent.environment
+        value = env.get(lvalue.declaration.index)
         lvalue = lvalue.next
 
         # iterate over records and arrays
@@ -363,7 +364,8 @@ class RecordCreation(Exp):
 
     @unroll_safe
     def evaluate(self, env):
-        type = env.get_type((self.type_id.level, self.type_id.index))
+        env = self.type_id.declaration.parent.environment
+        type = env.get(self.type_id.declaration.index)
         assert (isinstance(type, RecordType))
         values = [None] * len(type.field_types)
         index = 0
@@ -398,13 +400,14 @@ class Assign(Exp):
         value = self.expression.evaluate(env)
 
         lvalue = self.lvalue
-        path = (lvalue.level, lvalue.index)
+        index = lvalue.declaration.index
+        env = lvalue.declaration.parent.environment
         if not lvalue.next:
             # assignment to a plain lvalue
-            env.set(path, value)
+            env.set(index, value)
         else:
             # assignment to a sub-located destination
-            destination = env.get(path)
+            destination = env.get(index)
             lvalue = lvalue.next
 
             # traverse all locators except the last one
@@ -464,6 +467,7 @@ class Let(Exp):
     def __init__(self, declarations, expressions):
         self.declarations = declarations
         self.expressions = expressions  # the body of the let-binding; a sequence of expressions
+        self.environment = Environment.empty(None, len(declarations))
 
     def to_string(self):
         return '%s(declarations=%s, expressions=%s)' % (
@@ -476,19 +480,17 @@ class Let(Exp):
 
     @unroll_safe
     def evaluate(self, env):
-        if not env:  # not isinstance(env, Environment):
-            raise InterpretationError('No environment in %s' % self.to_string())
-
-        env = env.push(len(self.declarations))
+        self.environment = self.environment.push(len(self.declarations))
 
         for declaration in self.declarations:
             assert isinstance(declaration, Declaration)
-            declaration.evaluate(env)
+            declaration.evaluate(self.environment)
+
         value = None
         for expression in self.expressions:
-            value = expression.evaluate(env)
+            value = expression.evaluate(self.environment)
 
-        # env = env.pop()  # unnecessary
+        self.environment = self.environment.pop()
 
         return value
 
@@ -518,32 +520,30 @@ class FunctionCall(Bound):
         function_jitdriver.jit_merge_point(code=self)
 
         # find declaration
-        declaration = self.declaration.resolve()
+        # TODO declaration = self.declaration.resolve()
+        declaration = self.declaration
         if not declaration:
             raise InterpretationError('Could not find function %s' % self.name)
         assert isinstance(declaration, FunctionDeclaration) or isinstance(declaration, NativeFunctionDeclaration)
 
-        # check arguments
+        # check arguments TODO move this check to scopes.py
         if len(self.arguments) != len(declaration.parameters):
             raise InterpretationError('Incorrect number of arguments passed (%d); expected %d for function %s' % (
                 len(self.arguments), len(declaration.parameters), self.name))
 
-        # use declaration environment for function call (note: push() allows us to reuse the frame)
-        # TODO push declaration environment and pop at the end
-        activation_environment = declaration.environment.clone()
-        activation_environment = activation_environment.push(len(declaration.parameters) + 1)
-        activation_environment.set((0, 0), declaration)
-
         # evaluate body
         result = None
         if isinstance(declaration, FunctionDeclaration):
+            activation_environment = declaration.environment.push(len(declaration.parameters))
             # evaluate arguments
             for i in range(len(self.arguments)):
-                value = self.arguments[i].evaluate(env)
+                value = self.arguments[i].evaluate(declaration.environment)
                 assert (isinstance(value, Value))
-                activation_environment.set((0, i + 1), value)
+                activation_environment.set(i, value)
             # call function
+            declaration.environment = activation_environment
             result = declaration.body.evaluate(activation_environment)
+            declaration.environment = declaration.environment.pop()
         elif isinstance(declaration, NativeFunctionDeclaration):
             # evaluate arguments (no need for an activation environment)
             values = []
@@ -824,6 +824,9 @@ class TypeId(Bound):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name
 
+    def resolve(self):
+        return self.declaration.environment
+
 
 class TypeDeclaration(Declaration):
     _immutable_ = True
@@ -841,41 +844,47 @@ class TypeDeclaration(Declaration):
 
     @unroll_safe
     def evaluate(self, env):
-        env.set_type((0, self.index), self.type)
+        env.set(self.index, self.type)
 
 
 class VariableDeclaration(Declaration):
     _immutable_ = True
 
-    def __init__(self, name, type, exp, index=0):
+    def __init__(self, name, type, expression, parent=None, index=0):
         Declaration.__init__(self, name)
         self.type = type
-        self.exp = exp
-        self.index = 0
+        self.expression = expression
+        self.parent = parent  # the Let AST node containing this variable declaration
+        self.index = index  # the index of this declaration within all the declarations of the parent Let
 
     def to_string(self):
-        return '%s(name=%s, type=%s, exp=%s)' % (
-            self.__class__.__name__, self.name, nullable_to_string(self.type), self.exp.to_string())
+        return '%s(name=%s, type=%s, expression=%s)' % (
+            self.__class__.__name__, self.name, nullable_to_string(self.type), self.expression.to_string())
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
-               and nullable_equals(self.type, other.type) and self.exp.equals(other.exp)
+               and nullable_equals(self.type, other.type) and self.expression.equals(other.expression)
 
     @unroll_safe
     def evaluate(self, env):
-        value = self.exp.evaluate(env)
+        value = self.expression.evaluate(env)
         # TODO type-check
-        env.set((0, self.index), value)
+        env.set(self.index, value)
+
+    def resolve(self):
+        return self.parent.environment
 
 
 class FunctionParameter(Declaration):
     _immutable_ = True
 
-    def __init__(self, name, type=None):
+    def __init__(self, name, type=None, parent=None, index=0):
         Declaration.__init__(self, name)
         self.name = name
         assert isinstance(type, TypeId) or type is None
         self.type = type
+        self.parent = parent  # the FunctionDeclaration AST node containing this parameter
+        self.index = index  # the index within the function parameters
 
     def to_string(self):
         return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, nullable_to_string(self.type))
@@ -883,6 +892,9 @@ class FunctionParameter(Declaration):
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and nullable_equals(self.type, other.type)
+
+    def resolve(self):
+        return self.parent.environment
 
 
 class FunctionDeclaration(Declaration):
@@ -896,7 +908,7 @@ class FunctionDeclaration(Declaration):
         self.return_type = return_type
         assert isinstance(body, Exp)
         self.body = body
-        self.environment = Environment.empty()  # to be reset when the function declaration is evaluated
+        self.environment = Environment.empty(None, len(self.parameters))  # to be reset when the function declaration is evaluated
         assert index >= 0
         self.index = index
 
@@ -913,9 +925,7 @@ class FunctionDeclaration(Declaration):
 
     @unroll_safe
     def evaluate(self, env):
-        assert (env is not None)
-        env.set((0, self.index), self)
-        self.environment = env.clone()
+        env.set(self.index, self)
 
 
 class NativeFunctionDeclaration(Declaration):
@@ -945,8 +955,8 @@ class NativeFunctionDeclaration(Declaration):
 class NativeNoArgumentFunctionDeclaration(NativeFunctionDeclaration):
     _immutable_ = True
 
-    def __init__(self, name, parameters, return_type, function):
-        NativeFunctionDeclaration.__init__(self, name, parameters, return_type)
+    def __init__(self, name, return_type, function):
+        NativeFunctionDeclaration.__init__(self, name, [], return_type)
         self.function = function
 
     def call(self, arguments):

@@ -108,7 +108,7 @@ class TestOptimizingWhileLoops(unittest.TestCase):
             # adding this line creates more jitcodes in /tmp/usession-exploration-abrown/jitcodes which reduces the number of operations
             Parser('let var a := 0 in a end').parse()
 
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type=None, expression=IntegerValue(0))],
                           expressions=[Sequence(
                               expressions=[ModifiedWhile(condition=LessThan(left=LValue('a'), right=IntegerValue(100)),
                                                          body=Assign(lvalue=LValue(name='a'),
@@ -176,8 +176,8 @@ class TestOptimizingWhileLoops(unittest.TestCase):
                 a)
             end""").parse()
 
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0)),
-                                        VariableDeclaration(name='b', type=None, exp=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type=None, expression=IntegerValue(0)),
+                                        VariableDeclaration(name='b', type=None, expression=IntegerValue(0))],
                           expressions=[
                               Sequence(expressions=[
                                   ModifiedWhile(
@@ -280,7 +280,7 @@ class TestOptimizingWhileLoops(unittest.TestCase):
             # adding this line creates more jitcodes in /tmp/usession-exploration-abrown/jitcodes which reduces the number of operations
             unused = Parser('let var a := 0 in (while a < 100 do a := a + 1) end').parse()
 
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type=None, expression=IntegerValue(0))],
                           expressions=[Sequence(
                               expressions=[ModifiedWhile(condition=LessThan(left=LValue('a'), right=IntegerValue(100)),
                                                          body=Assign(lvalue=LValue(name='a'),

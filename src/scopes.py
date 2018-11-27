@@ -9,11 +9,16 @@ def transform_lvalues(exp, existing_declarations=None):
     :param existing_declarations: a list of already-available declarations in this scope
     :return: nothing, but alter each LValue in the AST to contain a path to its declaration
     """
-    assert isinstance(exp, Exp)
+    assert isinstance(exp, Program)
 
     transformer = LValueTransformer(existing_declarations or [])
     for node in DepthFirstAstIterator(exp):
         transformer.transform(node)
+
+    # we must also transform any declarations passed, e.g. in case they contain lvalues internally
+    if isinstance(existing_declarations, list):
+        for declaration in existing_declarations:
+            transform_lvalues(declaration, None)
 
 
 class ScopeError(Exception):
@@ -50,7 +55,7 @@ class DepthFirstAstIterator:
     """
 
     def __init__(self, root):
-        assert isinstance(root, Exp)
+        assert isinstance(root, Program)
         self.stack = [root]
 
     def __iter__(self):
@@ -84,7 +89,7 @@ class DepthFirstAstIterator:
         elif isinstance(expression, TypeDeclaration):
             self.push_one(expression.type)
         elif isinstance(expression, VariableDeclaration):
-            self.push_one(expression.exp)
+            self.push_one(expression.expression)
             if expression.type:
                 self.push_one(expression.type)
         elif isinstance(expression, ArrayCreation):
@@ -137,9 +142,13 @@ class LValueTransformer:
         if isinstance(node, Let):
             self.scopes.append(node)
             for i in range(len(node.declarations)):
+                node.declarations[i].parent = node
                 node.declarations[i].index = i
         elif isinstance(node, FunctionDeclaration):
             self.scopes.append(node)
+            for i in range(len(node.parameters)):
+                node.parameters[i].parent = node
+                node.parameters[i].index = i
         elif isinstance(node, LValue):
             if isinstance(node, ArrayLValue):
                 # if an expression is used to index into the array, it will be transformed as we iterate over the tree
