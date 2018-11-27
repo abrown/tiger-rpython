@@ -90,7 +90,12 @@ def create_environment_with_natives():
     native_functions = create_native_functions()
     for i in range(len(native_functions)):
         environment.set(i, native_functions[i])
-    return environment  # TODO remore this
+    return environment  # TODO remove this
+
+
+def create_empty_environment():
+    return Environment.empty()
+
 
 
 def list_native_environment_names(env):
