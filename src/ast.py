@@ -88,7 +88,8 @@ class Program(RPythonizedObject):
     """
     Tiger programs have three types of AST nodes: expressions, declarations, and types
     """
-    _immutable_ = True
+    _attrs_ = []
+    _immutable_fields = []
 
     def evaluate(self, env):
         pass
@@ -100,12 +101,13 @@ class Program(RPythonizedObject):
 
 
 class Exp(Program):
-    _immutable_ = True
-    pass
+    _attrs_ = []
+    _immutable_fields = []
 
 
 class Declaration(Program):
-    _immutable_ = True
+    _attrs_ = ['name', 'index']
+    _immutable_fields = ['name', 'index']
 
     def __init__(self, name, index=0):
         self.name = name
@@ -119,19 +121,21 @@ class Declaration(Program):
 
 
 class Bound(Exp):
-    _immutable_ = True
+    _attrs_ = ['declaration']
+    _immutable_fields = ['declaration']
 
     def __init__(self, declaration):
         self.declaration = declaration
 
 
 class Type(Program):
-    _immutable_ = True
-    pass
+    _attrs_ = []
+    _immutable_fields = []
 
 
 class Binding(Exp):
-    _immutable_ = True
+    _attrs_ = ['binding_values']
+    _immutable_fields = ['binding_values']
 
     def __init__(self, number_of_binding_values):
         self.binding_values = Environment.empty(number_of_binding_values)
@@ -141,12 +145,14 @@ class Binding(Exp):
 
 
 class Value(Exp):
-    _immutable_ = True
+    _attrs_ = []
+    _immutable_fields = []
 
     def __init__(self):
         pass
 
     def value(self):
+        # TODO remove?
         pass
 
     def equals(self, other):
@@ -157,7 +163,8 @@ class Value(Exp):
 
 
 class NilValue(Value):
-    _immutable_ = True
+    _attrs_ = []
+    _immutable_fields = []
 
     def __init__(self):
         Value.__init__(self)
@@ -170,12 +177,13 @@ class NilValue(Value):
 
 
 class IntegerValue(Value):
-    _immutable_ = True
+    _attrs_ = ['integer']
+    _immutable_fields = ['integer']
 
-    def __init__(self, value):
+    def __init__(self, integer):
         Value.__init__(self)
-        assert isinstance(value, int)
-        self.integer = value
+        assert isinstance(integer, int)
+        self.integer = integer
 
     def value(self):
         return self.integer
@@ -193,11 +201,12 @@ class IntegerValue(Value):
 
 
 class StringValue(Value):
-    _immutable_ = True
+    _attrs_ = ['string']
+    _immutable_fields = ['string']
 
-    def __init__(self, value):
+    def __init__(self, string):
         Value.__init__(self)
-        self.string = value
+        self.string = string
 
     def value(self):
         return self.string
@@ -210,7 +219,8 @@ class StringValue(Value):
 
 
 class ArrayValue(Value):
-    _immutable_ = True
+    _attrs_ = ['length', 'array']
+    _immutable_fields_ = ['length', 'array']
 
     def __init__(self, length=0, initial_value=None):
         Value.__init__(self)
@@ -227,7 +237,8 @@ class ArrayValue(Value):
 
 
 class RecordValue(Value):
-    _immutable_ = True
+    _attrs_ = ['type', 'values']
+    _immutable_fields = ['type', 'values']
 
     def __init__(self, type, values=None):
         Value.__init__(self)
@@ -248,7 +259,8 @@ class RecordValue(Value):
 
 
 class LValue(Bound):
-    _immutable_ = True
+    _attrs_ = ['name', 'next']
+    _immutable_fields = ['name', 'next']
 
     def __init__(self, name, next=None, declaration=None):
         Bound.__init__(self, declaration)
@@ -277,7 +289,7 @@ class LValue(Bound):
         while lvalue:
             if isinstance(lvalue, ArrayLValue):
                 assert (isinstance(value, ArrayValue))
-                index = lvalue.exp.evaluate(env)
+                index = lvalue.expression.evaluate(env)
                 assert (isinstance(index, IntegerValue))
                 value = value.array[index.integer]
             elif isinstance(lvalue, RecordLValue):
@@ -293,36 +305,38 @@ class LValue(Bound):
 
 
 class RecordLValue(LValue):
-    _immutable_ = True
-    pass
+    _attrs_ = []
+    _immutable_fields = []
 
 
 class ArrayLValue(LValue):
-    _immutable_ = True
+    attrs_ = ['name', 'next', 'expression']
+    _immutable_fields = ['name', 'next', 'expression']
 
-    def __init__(self, exp, next=None):
+    def __init__(self, expression, next=None):
         LValue.__init__(self, None, next)
-        self.exp = exp
+        self.expression = expression
 
     def to_string(self):
         return '%s(exp=%s, next=%s)' % (
-            self.__class__.__name__, self.exp.to_string(), nullable_to_string(self.next))
+            self.__class__.__name__, self.expression.to_string(), nullable_to_string(self.next))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.exp.equals(other.exp) \
+        return RPythonizedObject.equals(self, other) and self.expression.equals(other.expression) \
                and nullable_equals(self.next, other.next)
 
 
 class ArrayCreation(Exp):
-    _immutable_ = True
+    _attrs_ = ['length_expression', 'initial_value_expression', 'type_id']
+    _immutable_fields = ['length_expression', 'initial_value_expression', 'type_id']
 
-    def __init__(self, type, length, initial_value):
-        assert (isinstance(length, Exp))
-        self.length_expression = length
-        assert (isinstance(initial_value, Exp))
-        self.initial_value_expression = initial_value
-        assert (isinstance(type, TypeId))
-        self.type_id = type
+    def __init__(self, type_id, length_expression, initial_value_expression):
+        assert (isinstance(length_expression, Exp))
+        self.length_expression = length_expression
+        assert (isinstance(initial_value_expression, Exp))
+        self.initial_value_expression = initial_value_expression
+        assert (isinstance(type_id, TypeId))
+        self.type_id = type_id
 
     def to_string(self):
         return '%s(initial_value=%s, length=%s, type=%s)' % (
@@ -346,11 +360,12 @@ class ArrayCreation(Exp):
 
 
 class RecordCreation(Exp):
-    _immutable_ = True
+    _attrs_ = ['type_id', 'fields']
+    _immutable_fields = ['type_id', 'fields']
 
-    def __init__(self, type, fields):
-        assert (isinstance(type, TypeId))
-        self.type_id = type
+    def __init__(self, type_id, fields):
+        assert (isinstance(type_id, TypeId))
+        self.type_id = type_id
         # assert (isinstance(fields, dict))
         self.fields = fields
 
@@ -381,7 +396,8 @@ class RecordCreation(Exp):
 
 
 class Assign(Exp):
-    _immutable_ = True
+    _attrs_ = ['lvalue', 'expression']
+    _immutable_fields = ['lvalue', 'expression']
 
     def __init__(self, lvalue, expression):
         self.lvalue = lvalue
@@ -414,7 +430,7 @@ class Assign(Exp):
             while lvalue and lvalue.next:
                 if isinstance(lvalue, ArrayLValue):
                     assert isinstance(destination, ArrayValue)
-                    index = lvalue.exp.evaluate(env)
+                    index = lvalue.expression.evaluate(env)
                     assert isinstance(index, IntegerValue)
                     destination = destination.array[index.integer]
                 elif isinstance(lvalue, RecordLValue):
@@ -429,7 +445,7 @@ class Assign(Exp):
             # assign to the last locator
             if isinstance(lvalue, ArrayLValue):
                 assert isinstance(destination, ArrayValue)
-                index = lvalue.exp.evaluate(env)
+                index = lvalue.expression.evaluate(env)
                 assert isinstance(index, IntegerValue)
                 destination.array[index.integer] = value
             elif isinstance(lvalue, RecordLValue):
@@ -442,7 +458,8 @@ class Assign(Exp):
 
 
 class Sequence(Exp):
-    _immutable_ = True
+    _attrs_ = ['expressions']
+    _immutable_fields = ['expressions']
 
     def __init__(self, expressions):
         self.expressions = expressions
@@ -462,7 +479,8 @@ class Sequence(Exp):
 
 
 class Let(Exp):
-    _immutable_ = True
+    _attrs_ = ['declarations', 'expressions', 'environment']
+    _immutable_fields = ['declarations', 'expressions']  # note that the environment is not declared immutable
 
     def __init__(self, declarations, expressions):
         self.declarations = declarations
@@ -499,7 +517,8 @@ class Let(Exp):
 
 
 class FunctionCall(Bound):
-    _immutable_ = True
+    _attrs_ = ['name', 'arguments']
+    _immutable_fields = ['name', 'arguments']
 
     def __init__(self, name, arguments, declaration=None):
         Bound.__init__(self, declaration)
@@ -563,7 +582,8 @@ class FunctionCall(Bound):
 
 
 class If(Exp):
-    _immutable_ = True
+    _attrs_ = ['condition', 'body_if_true', 'body_if_false']
+    _immutable_fields = ['condition', 'body_if_true', 'body_if_false']
 
     def __init__(self, condition, body_if_true, body_if_false=None):
         self.condition = condition
@@ -593,7 +613,8 @@ class If(Exp):
 
 
 class While(Exp):
-    _immutable_ = True
+    _attrs_ = ['condition', 'body']
+    _immutable_fields = ['condition', 'body']
 
     def __init__(self, condition, body):
         self.condition = condition
@@ -625,7 +646,8 @@ class While(Exp):
 
 
 class For(Exp):
-    _immutable_ = True
+    _attrs_ = ['var', 'start', 'end', 'body', 'while_expression']
+    _immutable_fields = ['var', 'start', 'end', 'body', 'while_expression']
 
     def __init__(self, var, start, end, body):
         self.var = var
@@ -665,7 +687,8 @@ class For(Exp):
 
 
 class Break(Exp):
-    _immutable_ = True
+    _attrs_ = []
+    _immutable_fields = []
 
     @unroll_safe
     def evaluate(self, env):
@@ -680,7 +703,8 @@ class BreakException(Exception):
 
 
 class BinaryOperation(Exp):
-    _immutable_ = True
+    _attrs_ = ['left', 'right']
+    _immutable_fields = ['left', 'right']
 
     def __init__(self, left, right):
         self.left = left
@@ -712,7 +736,6 @@ class BinaryOperation(Exp):
 
 
 class Multiply(BinaryOperation):
-    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -720,7 +743,6 @@ class Multiply(BinaryOperation):
 
 
 class Divide(BinaryOperation):
-    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -728,7 +750,6 @@ class Divide(BinaryOperation):
 
 
 class Add(BinaryOperation):
-    _immutable_ = True
 
     @unroll_safe
     def evaluate(self, env):
@@ -737,7 +758,6 @@ class Add(BinaryOperation):
 
 
 class Subtract(BinaryOperation):
-    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -745,7 +765,6 @@ class Subtract(BinaryOperation):
 
 
 class GreaterThanOrEquals(BinaryOperation):
-    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -753,7 +772,6 @@ class GreaterThanOrEquals(BinaryOperation):
 
 
 class LessThanOrEquals(BinaryOperation):
-    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -761,7 +779,6 @@ class LessThanOrEquals(BinaryOperation):
 
 
 class Equals(BinaryOperation):
-    _immutable_ = True
 
     def evaluate(self, env):
         (left, right) = self.evaluate_sides_to_value(env)
@@ -769,7 +786,6 @@ class Equals(BinaryOperation):
 
 
 class NotEquals(BinaryOperation):
-    _immutable_ = True
 
     def evaluate(self, env):
         (left, right) = self.evaluate_sides_to_value(env)
@@ -777,7 +793,6 @@ class NotEquals(BinaryOperation):
 
 
 class GreaterThan(BinaryOperation):
-    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -785,7 +800,6 @@ class GreaterThan(BinaryOperation):
 
 
 class LessThan(BinaryOperation):
-    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -793,7 +807,6 @@ class LessThan(BinaryOperation):
 
 
 class And(BinaryOperation):
-    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -801,7 +814,6 @@ class And(BinaryOperation):
 
 
 class Or(BinaryOperation):
-    _immutable_ = True
 
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
@@ -812,7 +824,8 @@ class Or(BinaryOperation):
 
 
 class TypeId(Bound):
-    _immutable_ = True
+    _attrs_ = ['name']
+    _immutable_fields = ['name']
 
     def __init__(self, name, declaration=None):
         Bound.__init__(self, declaration)
@@ -829,7 +842,8 @@ class TypeId(Bound):
 
 
 class TypeDeclaration(Declaration):
-    _immutable_ = True
+    _attrs_ = ['type', 'index']
+    _immutable_fields = ['type', 'index']
 
     def __init__(self, name, type, index=0):
         Declaration.__init__(self, name)
@@ -848,7 +862,8 @@ class TypeDeclaration(Declaration):
 
 
 class VariableDeclaration(Declaration):
-    _immutable_ = True
+    _attrs_ = ['type', 'expression', 'parent', 'index']
+    _immutable_fields = ['type', 'expression', 'parent', 'index']
 
     def __init__(self, name, type, expression, parent=None, index=0):
         Declaration.__init__(self, name)
@@ -876,7 +891,8 @@ class VariableDeclaration(Declaration):
 
 
 class FunctionParameter(Declaration):
-    _immutable_ = True
+    _attrs_ = ['type', 'parent', 'index']
+    _immutable_fields = ['type', 'parent', 'index']
 
     def __init__(self, name, type=None, parent=None, index=0):
         Declaration.__init__(self, name)
@@ -898,7 +914,8 @@ class FunctionParameter(Declaration):
 
 
 class FunctionDeclaration(Declaration):
-    _immutable_ = True
+    _attrs_ = ['parameters', 'return_type', 'body', 'environment', 'index']
+    _immutable_fields = ['parameters', 'return_type', 'body', 'environment', 'index']
 
     def __init__(self, name, parameters, return_type, body, environment=None, index=0):
         Declaration.__init__(self, name)
@@ -930,7 +947,8 @@ class FunctionDeclaration(Declaration):
 
 
 class NativeFunctionDeclaration(Declaration):
-    _immutable_ = True
+    _attrs_ = ['parameters', 'return_type']
+    _immutable_fields = ['parameters', 'return_type']
 
     def __init__(self, name, parameters=None, return_type=None):
         Declaration.__init__(self, name)
@@ -938,7 +956,7 @@ class NativeFunctionDeclaration(Declaration):
         assert isinstance(self.parameters, list)
         assert isinstance(return_type, TypeId) or return_type is None
         self.return_type = return_type
-        self.environment = Environment.empty()  # native functions cannot touch the interpreter environment
+        # TODO remove self.environment = Environment.empty()  # native functions cannot touch the interpreter environment
 
     def call(self, arguments):
         raise InterpretationError('Use a subclass of NativeFunctionDeclaration that specifies the number of arguments')
@@ -954,7 +972,8 @@ class NativeFunctionDeclaration(Declaration):
 
 
 class NativeNoArgumentFunctionDeclaration(NativeFunctionDeclaration):
-    _immutable_ = True
+    _attrs_ = ['function']
+    _immutable_fields = ['function']
 
     def __init__(self, name, return_type, function):
         NativeFunctionDeclaration.__init__(self, name, [], return_type)
@@ -966,7 +985,8 @@ class NativeNoArgumentFunctionDeclaration(NativeFunctionDeclaration):
 
 
 class NativeOneArgumentFunctionDeclaration(NativeFunctionDeclaration):
-    _immutable_ = True
+    _attrs_ = ['function']
+    _immutable_fields = ['function']
 
     def __init__(self, name, parameters, return_type, function):
         NativeFunctionDeclaration.__init__(self, name, parameters, return_type)
@@ -978,7 +998,8 @@ class NativeOneArgumentFunctionDeclaration(NativeFunctionDeclaration):
 
 
 class NativeTwoArgumentFunctionDeclaration(NativeFunctionDeclaration):
-    _immutable_ = True
+    _attrs_ = ['function']
+    _immutable_fields = ['function']
 
     def __init__(self, name, parameters, return_type, function):
         NativeFunctionDeclaration.__init__(self, name, parameters, return_type)
@@ -993,10 +1014,11 @@ class NativeTwoArgumentFunctionDeclaration(NativeFunctionDeclaration):
 
 
 class ArrayType(Type):
-    _immutable_ = True
+    _attrs_ = ['type_name']
+    _immutable_fields_ = ['type_name']
 
     def __init__(self, element_type):
-        self.type_name = element_type
+        self.type_name = element_type  # TODO match names and use TypeId instead
 
     def to_string(self):
         return '%s(type_name=%s)' % (self.__class__.__name__, self.type_name)
@@ -1006,7 +1028,8 @@ class ArrayType(Type):
 
 
 class RecordType(Type):
-    _immutable_ = True
+    _attrs_ = ['field_types', 'field_positions']
+    _immutable_fields_ = ['field_types', 'field_positions']
 
     def __init__(self, field_types):
         # assert (isinstance(field_types, dict))
@@ -1070,20 +1093,38 @@ def inject_logging_into_evaluate_methods():
             setattr(klass, 'evaluate', wrapper(klass.__dict__['evaluate']))
 
 
+def has_init_function(klass):
+    return '__init__' in klass.__dict__ and hasattr(klass.__dict__['__init__'], '__call__')
+
+
+def get_init_function(klass):
+    return klass.__dict__['__init__']
+
+
 def add_immutable_fields(klass):
     init_name = '__init__'
     immutable_fields_name = '_immutable_fields_'
-    #if hasattr(klass, init_name) and not hasattr(klass, immutable_fields_name):
-    if init_name in klass.__dict__ and immutable_fields_name not in klass.__dict__:
-        #init = getattr(klass, init_name)
-        init = klass.__dict__[init_name]
-        if hasattr(init, '__call__'):
-            args = [arg for arg in list_arguments_of_function(init, klass.__name__) if arg != 'self']
-            # TODO format list-like args, e.g. 'expressions[*]'
-            #print('Added immutable fields to %s: %s' % (klass.__name__, args))
-            setattr(klass, immutable_fields_name, args)
+    # if hasattr(klass, init_name) and not hasattr(klass, immutable_fields_name):
+    if has_init_function(klass) and immutable_fields_name not in klass.__dict__:
+        args = [arg for arg in list_arguments_of_function(get_init_function(klass), klass.__name__) if arg != 'self']
+        # TODO format list-like args, e.g. 'expressions[*]'
+        print('Added _immutable_fields_ to %s: %s' % (klass.__name__, args))
+        setattr(klass, immutable_fields_name, args)
+
+
+def add_attrs(klass):
+    attrs_name = '_attrs_'
+    if attrs_name not in klass.__dict__:
+        if has_init_function(klass):
+            args = [arg for arg in list_arguments_of_function(get_init_function(klass), klass.__name__) if
+                    arg != 'self']
+        else:
+            args = []
+        setattr(klass, attrs_name, args)
+        print('Added _attrs_ to %s: %s' % (klass.__name__, args))
 
 
 # fix-up all AST nodes in this file by adding RPython's _immutable_fields_ annotation
 for name, cls in list_classes_in_file(Program):
     add_immutable_fields(cls)
+    add_attrs(cls)

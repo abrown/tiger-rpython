@@ -114,7 +114,7 @@ class DepthFirstAstIterator:
             if expression.next:
                 self.push_one(expression.next)
             if isinstance(expression, ArrayLValue):
-                self.push_one(expression.exp)
+                self.push_one(expression.expression)
 
     def push_one(self, expression):
         assert not isinstance(expression, list)

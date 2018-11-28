@@ -1,4 +1,6 @@
 class RPythonizedObject:
+    _attrs_ = []
+
     def to_string(self):
         return self.__class__.__name__  # by default just print the class name
 
