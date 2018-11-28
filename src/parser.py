@@ -94,8 +94,9 @@ class Parser:
     def array_from_lvalue(self, lvalue):
         assert isinstance(lvalue, LValue)
         type = lvalue.name
-        assert isinstance(lvalue.next, ArrayLValue)
-        exp1 = lvalue.next.expression
+        next = lvalue.next
+        assert isinstance(next, ArrayLValue)
+        exp1 = next.expression
         exp2 = self.expression()
         return ArrayCreation(TypeId(type), exp1, exp2)
 
