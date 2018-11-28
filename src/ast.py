@@ -908,7 +908,8 @@ class FunctionDeclaration(Declaration):
         self.return_type = return_type
         assert isinstance(body, Exp)
         self.body = body
-        self.environment = Environment.empty(None, len(self.parameters))  # to be reset when the function declaration is evaluated
+        self.environment = Environment.empty(None, len(
+            self.parameters))  # to be reset when the function declaration is evaluated
         assert index >= 0
         self.index = index
 
@@ -1017,11 +1018,29 @@ class RecordType(Type):
             index += 1
 
     def to_string(self):
-        _immutable_ = True
         return '%s(field_types=%s)' % (self.__class__.__name__, dict_to_string(self.field_types))
 
     def equals(self, other):
         return RPythonizedObject.equals(self, other) and dict_equals(self.field_types, other.field_types)
+
+
+def list_classes_in_file(parent_class=None):
+    import sys
+    import inspect
+    if parent_class:
+        assert inspect.isclass(parent_class)
+        class_filter = lambda c: inspect.isclass(c) and issubclass(c, Program)
+    else:
+        class_filter = inspect.isclass
+    return inspect.getmembers(sys.modules[__name__], class_filter)
+
+
+def list_arguments_of_function(func, containing_class=None):
+    import inspect
+    args, arglist, keywords, defaults = inspect.getargspec(func)
+    assert arglist is None, "Avoid using argument lists (e.g. *args) in constructor of class %s" % containing_class
+    assert keywords is None, "Avoid using keywords (e.g. **kw) in constructor of class %s" % containing_class
+    return args
 
 
 def inject_logging_into_evaluate_methods():
@@ -1032,8 +1051,6 @@ def inject_logging_into_evaluate_methods():
     AST node
     :return: nothing
     """
-    import sys
-    import inspect
     from functools import wraps
 
     def wrapper(method):
@@ -1047,9 +1064,26 @@ def inject_logging_into_evaluate_methods():
 
         return wrapped
 
-    for name, klass in inspect.getmembers(sys.modules[__name__], inspect.isclass):
+    for name, klass in list_classes_in_file():
         if 'evaluate' in klass.__dict__:
             # print('Replacing evaluate method of %s' % klass)
             setattr(klass, 'evaluate', wrapper(klass.__dict__['evaluate']))
 
-# inject_logging_into_evaluate_methods()
+
+def add_immutable_fields(klass):
+    init_name = '__init__'
+    immutable_fields_name = '_immutable_fields_'
+    #if hasattr(klass, init_name) and not hasattr(klass, immutable_fields_name):
+    if init_name in klass.__dict__ and immutable_fields_name not in klass.__dict__:
+        #init = getattr(klass, init_name)
+        init = klass.__dict__[init_name]
+        if hasattr(init, '__call__'):
+            args = [arg for arg in list_arguments_of_function(init, klass.__name__) if arg != 'self']
+            # TODO format list-like args, e.g. 'expressions[*]'
+            #print('Added immutable fields to %s: %s' % (klass.__name__, args))
+            setattr(klass, immutable_fields_name, args)
+
+
+# fix-up all AST nodes in this file by adding RPython's _immutable_fields_ annotation
+for name, cls in list_classes_in_file(Program):
+    add_immutable_fields(cls)
