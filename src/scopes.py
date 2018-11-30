@@ -142,13 +142,17 @@ class LValueTransformer:
         if isinstance(node, Let):
             self.scopes.append(node)
             for i in range(len(node.declarations)):
-                node.declarations[i].parent = node
-                node.declarations[i].index = i
+                declaration = node.declarations[i]
+                assert isinstance(declaration, Declaration)
+                declaration.parent = node
+                declaration.index = i
         elif isinstance(node, FunctionDeclaration):
             self.scopes.append(node)
             for i in range(len(node.parameters)):
-                node.parameters[i].parent = node
-                node.parameters[i].index = i
+                parameter = node.parameters[i]
+                assert isinstance(parameter, FunctionParameter)
+                parameter.parent = node
+                parameter.index = i
         elif isinstance(node, LValue):
             if isinstance(node, ArrayLValue):
                 # if an expression is used to index into the array, it will be transformed as we iterate over the tree

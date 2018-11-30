@@ -90,6 +90,9 @@ class Program(RPythonizedObject):
     """
     _attrs_ = []
     _immutable_fields = []
+    #
+    # def __init__(self):
+    #     RPythonizedObject.__init__(self)
 
     def evaluate(self, env):
         pass
@@ -103,42 +106,41 @@ class Program(RPythonizedObject):
 class Exp(Program):
     _attrs_ = []
     _immutable_fields = []
+    #
+    # def __init__(self):
+    #     Program.__init__(self)
 
 
 class Declaration(Program):
-    _attrs_ = ['name', 'index']
-    _immutable_fields = ['name', 'index']
+    _attrs_ = ['name', 'parent', 'index']
+    _immutable_fields = ['name', 'parent', 'index']
 
-    def __init__(self, name, index=0):
+    def __init__(self, name, parent=None, index=0):
         self.name = name
-        self.index = index  # TODO remove? is this really used
+        self.parent = parent  # the enclosing Let/FunctionDeclaration AST node containing this declaration
+        self.index = index  # TODO remove? is this really used? or move to ScopedDeclaration  # the index of this declaration within all the declarations of the parent
 
     def evaluate(self, env):
         raise InterpretationError('Declaration evaluation must be overriden by subclasses')
 
-    def resolve(self):
-        raise InterpretationError('Declaration resolution must be overriden by subclasses')
-
 
 class Bound(Exp):
+    """
+    This subclass is used for describing AST nodes that are 'bound' to their referring declaration in scopes.py
+    """
     _attrs_ = ['declaration']
     _immutable_fields = ['declaration']
 
     def __init__(self, declaration):
         self.declaration = declaration
 
+    def resolve(self):
+        raise InterpretationError('Environment resolution must be overriden by subclasses')
+
 
 class Type(Program):
     _attrs_ = []
     _immutable_fields = []
-
-
-class Binding(Exp):
-    _attrs_ = ['binding_values']
-    _immutable_fields = ['binding_values']
-
-    def __init__(self, number_of_binding_values):
-        self.binding_values = Environment.empty(number_of_binding_values)
 
 
 # VALUES
@@ -156,7 +158,7 @@ class Value(Exp):
         pass
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other)
+        return isinstance(other, Value)  # RPythonizedObject.equals(self, other)
 
     def evaluate(self, env):
         return self
@@ -186,7 +188,8 @@ class IntegerValue(Value):
         self.integer = integer
 
     def value(self):
-        return self.integer
+        pass
+        #return self.integer
 
     @staticmethod
     def from_string(number):
@@ -197,7 +200,7 @@ class IntegerValue(Value):
         return '%s(%d)' % (self.__class__.__name__, self.integer)
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.integer == other.integer
+        return isinstance(other, IntegerValue) and self.integer == other.integer
 
 
 class StringValue(Value):
@@ -215,7 +218,7 @@ class StringValue(Value):
         return '%s(%s)' % (self.__class__.__name__, self.string)
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.string == other.string
+        return isinstance(other, self.__class__) and self.string == other.string
 
 
 class ArrayValue(Value):
@@ -280,12 +283,11 @@ class LValue(Bound):
         lvalue = self
 
         # extract normal lvalue from environment
-        assert (isinstance(lvalue, LValue))
-        env = lvalue.declaration.parent.environment
-        value = env.get(lvalue.declaration.index)
-        lvalue = lvalue.next
+        env, index = self.resolve()
+        value = env.get(index)
 
         # iterate over records and arrays
+        lvalue = lvalue.next
         while lvalue:
             if isinstance(lvalue, ArrayLValue):
                 assert (isinstance(value, ArrayValue))
@@ -302,6 +304,17 @@ class LValue(Bound):
             lvalue = lvalue.next
 
         return value
+
+    def resolve(self):
+        declaration = self.declaration
+        parent = declaration.parent
+        if isinstance(parent, Let):
+            return parent.environment, declaration.index
+        elif isinstance(parent, FunctionDeclaration):
+            return parent.environment, declaration.index
+        else:
+            raise InterpretationError(
+                'Incorrect AST; expected to resolve a parent that is a Let or FunctionDeclaration node')
 
 
 class RecordLValue(LValue):
@@ -379,15 +392,15 @@ class RecordCreation(Exp):
 
     @unroll_safe
     def evaluate(self, env):
-        env = self.type_id.declaration.parent.environment
-        type = env.get(self.type_id.declaration.index)
+        env, env_index = self.type_id.resolve()
+        type = env.get(env_index)
         assert (isinstance(type, RecordType))
         values = [None] * len(type.field_types)
-        index = 0
+        record_index = 0
         for field in type.field_types:
             value = self.fields[field].evaluate(env)
-            values[index] = value
-            index += 1
+            values[record_index] = value
+            record_index += 1
         assert (len(type.field_types) == len(values))
         return RecordValue(type, values)
 
@@ -400,6 +413,7 @@ class Assign(Exp):
     _immutable_fields = ['lvalue', 'expression']
 
     def __init__(self, lvalue, expression):
+        assert isinstance(lvalue, LValue)
         self.lvalue = lvalue
         self.expression = expression
 
@@ -416,8 +430,7 @@ class Assign(Exp):
         value = self.expression.evaluate(env)
 
         lvalue = self.lvalue
-        index = lvalue.declaration.index
-        env = lvalue.declaration.parent.environment
+        env, index = lvalue.resolve()
         if not lvalue.next:
             # assignment to a plain lvalue
             env.set(index, value)
@@ -580,6 +593,10 @@ class FunctionCall(Bound):
 
         return result
 
+    def resolve(self):
+        raise InterpretationError(
+            'FunctionCall does not need resolution; it operates directly on the assigned function declaration')
+
 
 class If(Exp):
     _attrs_ = ['condition', 'body_if_true', 'body_if_false']
@@ -629,10 +646,9 @@ class While(Exp):
             other.body)
 
     def evaluate(self, env):
+        result = None
         condition_value = self.condition.evaluate(env)
         assert isinstance(condition_value, IntegerValue)
-
-        result = None
         while condition_value.integer != 0:
             while_jitdriver.jit_merge_point(code=self, env=env, result=result, value=condition_value)
             # attempted 'env = promote(env)' here but this let to incorrect number of inner loops in sumprimes
@@ -838,17 +854,20 @@ class TypeId(Bound):
         return RPythonizedObject.equals(self, other) and self.name == other.name
 
     def resolve(self):
-        return self.declaration.environment
+        declaration = self.declaration
+        assert isinstance(declaration, TypeDeclaration)
+        parent = declaration.parent
+        assert isinstance(parent, Let)
+        return parent.environment, declaration.index
 
 
 class TypeDeclaration(Declaration):
-    _attrs_ = ['type', 'index']
-    _immutable_fields = ['type', 'index']
+    _attrs_ = ['type']
+    _immutable_fields = ['type']
 
-    def __init__(self, name, type, index=0):
-        Declaration.__init__(self, name)
+    def __init__(self, name, type, parent=None, index=0):
+        Declaration.__init__(self, name, parent, index)
         self.type = type  # note that type here can be either a Type (record, array) or a TypeId
-        self.index = index
 
     def to_string(self):
         return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, self.type.to_string())
@@ -862,15 +881,13 @@ class TypeDeclaration(Declaration):
 
 
 class VariableDeclaration(Declaration):
-    _attrs_ = ['type', 'expression', 'parent', 'index']
-    _immutable_fields = ['type', 'expression', 'parent', 'index']
+    _attrs_ = ['type', 'expression']
+    _immutable_fields = ['type', 'expression']
 
     def __init__(self, name, type, expression, parent=None, index=0):
-        Declaration.__init__(self, name)
-        self.type = type
+        Declaration.__init__(self, name, parent, index)
+        self.type = type  # TODO assert this is a TypeId?
         self.expression = expression
-        self.parent = parent  # the Let AST node containing this variable declaration
-        self.index = index  # the index of this declaration within all the declarations of the parent Let
 
     def to_string(self):
         return '%s(name=%s, type=%s, expression=%s)' % (
@@ -886,21 +903,15 @@ class VariableDeclaration(Declaration):
         # TODO type-check
         env.set(self.index, value)
 
-    def resolve(self):
-        return self.parent.environment
-
 
 class FunctionParameter(Declaration):
-    _attrs_ = ['type', 'parent', 'index']
-    _immutable_fields = ['type', 'parent', 'index']
+    _attrs_ = ['type']
+    _immutable_fields = ['type']
 
     def __init__(self, name, type=None, parent=None, index=0):
-        Declaration.__init__(self, name)
-        self.name = name
+        Declaration.__init__(self, name, parent, index)
         assert isinstance(type, TypeId) or type is None
         self.type = type
-        self.parent = parent  # the FunctionDeclaration AST node containing this parameter
-        self.index = index  # the index within the function parameters
 
     def to_string(self):
         return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, nullable_to_string(self.type))
@@ -909,20 +920,25 @@ class FunctionParameter(Declaration):
         return RPythonizedObject.equals(self, other) and self.name == other.name \
                and nullable_equals(self.type, other.type)
 
-    def resolve(self):
-        return self.parent.environment
 
+class FunctionDeclarationBase(Declaration):
+    _attrs_ = ['parameters', 'return_type']
+    _immutable_fields = ['parameters', 'return_type']
 
-class FunctionDeclaration(Declaration):
-    _attrs_ = ['parameters', 'return_type', 'body', 'environment', 'index']
-    _immutable_fields = ['parameters', 'return_type', 'body', 'environment', 'index']
-
-    def __init__(self, name, parameters, return_type, body, environment=None, index=0):
-        Declaration.__init__(self, name)
+    def __init__(self, name, parameters, return_type, parent=None, index=0):
+        Declaration.__init__(self, name, parent, index)
         assert isinstance(parameters, list)
         self.parameters = parameters
         assert isinstance(return_type, TypeId) or return_type is None
         self.return_type = return_type
+
+
+class FunctionDeclaration(FunctionDeclarationBase):
+    _attrs_ = ['body', 'environment', 'index']
+    _immutable_fields = ['body', 'environment?', 'index']
+
+    def __init__(self, name, parameters, return_type, body, environment=None, index=0):
+        FunctionDeclarationBase.__init__(self, name, parameters, return_type)
         assert isinstance(body, Exp)
         self.body = body
         self.environment = Environment.empty(None, len(
@@ -946,17 +962,12 @@ class FunctionDeclaration(Declaration):
         env.set(self.index, self)
 
 
-class NativeFunctionDeclaration(Declaration):
-    _attrs_ = ['parameters', 'return_type']
-    _immutable_fields = ['parameters', 'return_type']
+class NativeFunctionDeclaration(FunctionDeclarationBase):
+    _attrs_ = []
+    _immutable_fields = []
 
     def __init__(self, name, parameters=None, return_type=None):
-        Declaration.__init__(self, name)
-        self.parameters = parameters or []
-        assert isinstance(self.parameters, list)
-        assert isinstance(return_type, TypeId) or return_type is None
-        self.return_type = return_type
-        # TODO remove self.environment = Environment.empty()  # native functions cannot touch the interpreter environment
+        FunctionDeclarationBase.__init__(self, name, parameters or [], return_type)
 
     def call(self, arguments):
         raise InterpretationError('Use a subclass of NativeFunctionDeclaration that specifies the number of arguments')
@@ -1125,6 +1136,6 @@ def add_attrs(klass):
 
 
 # fix-up all AST nodes in this file by adding RPython's _immutable_fields_ annotation
-for name, cls in list_classes_in_file(Program):
-    add_immutable_fields(cls)
-    add_attrs(cls)
+# for name, cls in list_classes_in_file(Program):
+#     add_immutable_fields(cls)
+#     add_attrs(cls)
