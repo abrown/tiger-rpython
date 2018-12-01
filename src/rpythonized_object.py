@@ -1,8 +1,7 @@
 class RPythonizedObject:
-    _attrs_ = []
+    #_attrs_ = []
 
-    # def __init__(self):
-    #     pass
+    def __init__(self): pass
 
     def to_string(self):
         return self.__class__.__name__  # by default just print the class name
@@ -56,23 +55,19 @@ def nullable_equals(obj1, obj2):
         return False
 
 
-def list_to_string(list):
+def list_to_string(expression_list):
     stringified = []
-    for item in list:
+    for item in expression_list:
         stringified.append(item.to_string())
     return '[%s]' % (', '.join(stringified))
 
 
-def dict_to_string(dict):
+def dict_to_string(expression_dict):
     stringified = []
-    for key in dict:
-        stringified.append(key + '=' + dict[key].to_string())
+    for key in expression_dict:
+        stringified.append(key + '=' + expression_dict[key].to_string())
     return '{%s}' % (', '.join(stringified))
 
 
 def nullable_to_string(obj):
     return obj.to_string() if obj is not None else 'None'
-
-
-class Immutable:
-    _immutable_ = True

@@ -53,7 +53,7 @@ class TestEvaluating(unittest.TestCase):
         """
 
         # set 'a := 42' in a pre-existing environment
-        decl = Let([VariableDeclaration(name='a', type=None, expression=IntegerValue(42))], [])
+        decl = Let([VariableDeclaration(name='a', type_id=None, expression=IntegerValue(42))], [])
 
         # run the function to program the environment
         self.evaluate(code, decl)
@@ -74,7 +74,7 @@ class TestEvaluating(unittest.TestCase):
         """
 
         # set 'a := 42' in a pre-existing environment
-        decl = Let([VariableDeclaration(name='a', type=None, expression=IntegerValue(42))], [])
+        decl = Let([VariableDeclaration(name='a', type_id=None, expression=IntegerValue(42))], [])
 
         # run the function to change the environment and it should still affect the outer scope
         self.evaluate(code, decl)

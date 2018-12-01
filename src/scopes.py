@@ -42,9 +42,10 @@ class ExitScope(Exp):
     Used for marking when the depth-first iterator exits a scope
     NOTE: this must subclass expression to satisfy RPython, not for any other reason.
     """
-    _immutable_ = True
+    #_attrs_ = ['expression']
 
     def __init__(self, expression):
+        Exp.__init__(self)
         assert isinstance(expression, Program)
         self.expression = expression
 

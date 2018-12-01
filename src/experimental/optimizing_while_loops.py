@@ -108,14 +108,14 @@ class TestOptimizingWhileLoops(unittest.TestCase):
             # adding this line creates more jitcodes in /tmp/usession-exploration-abrown/jitcodes which reduces the number of operations
             Parser('let var a := 0 in a end').parse()
 
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, expression=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type_id=None, expression=IntegerValue(0))],
                           expressions=[Sequence(
                               expressions=[ModifiedWhile(condition=LessThan(left=LValue('a'), right=IntegerValue(100)),
                                                          body=Assign(lvalue=LValue(name='a'),
                                                                      expression=Add(
                                                                          left=LValue(name='a'),
                                                                          right=IntegerValue(1)))),
-                                           LValue(name='a', next=None)])])
+                                           LValue(name='a', next_lvalue=None)])])
             environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
             result = program.evaluate(environment)
             assert isinstance(result, IntegerValue)
@@ -176,24 +176,24 @@ class TestOptimizingWhileLoops(unittest.TestCase):
                 a)
             end""").parse()
 
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, expression=IntegerValue(0)),
-                                        VariableDeclaration(name='b', type=None, expression=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type_id=None, expression=IntegerValue(0)),
+                                        VariableDeclaration(name='b', type_id=None, expression=IntegerValue(0))],
                           expressions=[
                               Sequence(expressions=[
                                   ModifiedWhile(
-                                      condition=LessThan(left=LValue(name='a', next=None), right=IntegerValue(50)),
+                                      condition=LessThan(left=LValue(name='a', next_lvalue=None), right=IntegerValue(50)),
                                       body=Sequence(expressions=[
-                                          Assign(lvalue=LValue(name='a', next=None),
-                                                 expression=Add(left=LValue(name='a', next=None),
+                                          Assign(lvalue=LValue(name='a', next_lvalue=None),
+                                                 expression=Add(left=LValue(name='a', next_lvalue=None),
                                                                 right=IntegerValue(1))),
-                                          ModifiedWhile(condition=LessThan(left=LValue(name='b', next=None),
+                                          ModifiedWhile(condition=LessThan(left=LValue(name='b', next_lvalue=None),
                                                                            right=IntegerValue(100)),
                                                         body=Sequence(expressions=[
-                                                            Assign(lvalue=LValue(name='b', next=None), expression=Add(
-                                                                left=LValue(name='b', next=None),
+                                                            Assign(lvalue=LValue(name='b', next_lvalue=None), expression=Add(
+                                                                left=LValue(name='b', next_lvalue=None),
                                                                 right=IntegerValue(1)))])),
-                                          Assign(lvalue=LValue(name='b', next=None), expression=IntegerValue(0))])),
-                                  LValue(name='a', next=None)])])
+                                          Assign(lvalue=LValue(name='b', next_lvalue=None), expression=IntegerValue(0))])),
+                                  LValue(name='a', next_lvalue=None)])])
 
             environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
             result = program.evaluate(environment)
@@ -280,14 +280,14 @@ class TestOptimizingWhileLoops(unittest.TestCase):
             # adding this line creates more jitcodes in /tmp/usession-exploration-abrown/jitcodes which reduces the number of operations
             unused = Parser('let var a := 0 in (while a < 100 do a := a + 1) end').parse()
 
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, expression=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type_id=None, expression=IntegerValue(0))],
                           expressions=[Sequence(
                               expressions=[ModifiedWhile(condition=LessThan(left=LValue('a'), right=IntegerValue(100)),
                                                          body=Assign(lvalue=LValue(name='a'),
                                                                      expression=Add(
                                                                          left=LValue(name='a'),
                                                                          right=IntegerValue(1)))),
-                                           LValue(name='a', next=None)])])
+                                           LValue(name='a', next_lvalue=None)])])
 
             environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
             result = program.evaluate(environment)
