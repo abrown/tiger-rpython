@@ -39,6 +39,12 @@ benchmarks: binaries
 	$(foreach program, $(shell find src/benchmark/*/*.tig), ./src/benchmark/benchmark.sh $(program);)
 PHONY: benchmarks
 
+BENCHMARKS_C=permute queens sieve sumprimes towers
+$(BENCHMARKS_C): %: src/benchmark/baseline/%.c
+	# mkdir -p bin
+	gcc -O0 -o bin/$@ $<
+benchmarks-c: $(BENCHMARKS_C)
+
 benchmarks-c-while:
 	gcc src/benchmark/while_loop/while-parameterized.c -O0 -o bin/while-parameterized
 	time bin/while-parameterized 100000000
