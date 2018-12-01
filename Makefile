@@ -40,7 +40,7 @@ benchmarks: binaries
 PHONY: benchmarks
 
 BENCHMARKS_C=permute queens sieve sumprimes towers
-$(BENCHMARKS_C): %: src/benchmark/baseline/%.c
+$(BENCHMARKS_C): %: src/benchmark/suite-c
 	# mkdir -p bin
 	gcc -O0 -o bin/$@-O0 $<
 	gcc -O2 -o bin/$@-O2 $<
