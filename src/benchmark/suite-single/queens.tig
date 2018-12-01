@@ -1,0 +1,68 @@
+// see https://github.com/smarr/are-we-fast-yet/blob/master/benchmarks/Java/src/Queens.java
+let
+  type intArray = array of int
+in
+  let
+    function queens(n: int):int =
+      let
+        var m : int := n - 1
+        var freeRows : intArray := intArray[  n] of  1
+        var freeMaxs : intArray := intArray[2*n] of  1
+        var freeMins : intArray := intArray[2*n] of  1
+        var queenRows: intArray := intArray[  n] of -1
+
+        function printBoard() = (
+          for r := 0 to m
+          do (
+            for c := 0 to m
+            do
+              print(if queenRows[r] = c then " X" else " .");
+            print("\n")
+          );
+          print("\n"))
+
+        function getRowColumn(r: int, c: int): int =
+          (freeRows[r] + freeMaxs[c+r] + freeMins[c-r+m]) = 3
+
+        function setRowColumn(r: int, c: int, v: int) = (
+          freeRows[r        ] := v;
+          freeMaxs[c + r    ] := v;
+          freeMins[c - r + m] := v
+        )
+
+        function placeQueen(c: int):int =
+          let
+            var placed : int := 0
+          in
+            for r := 0 to m
+            do (
+              if getRowColumn(r, c) = 1
+              then (
+                queenRows[r] := c;
+                setRowColumn(r, c, 0);
+                if c = m
+                then (
+                  placed := 1;
+                  break
+                );
+
+                if placeQueen(c + 1) = 1
+                then (
+                  placed := 1;
+                  break
+                );
+                setRowColumn(r, c, 1)
+              )
+            );
+            placed
+          end
+      in
+        placeQueen(0)
+        // for debugging:
+        //(placeQueen(0); printBoard())
+      end
+   in
+     for i := 1 to 20 do
+       queens(i)
+   end
+end
