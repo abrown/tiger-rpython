@@ -5,6 +5,8 @@ import subprocess
 # setup logging
 from collections import OrderedDict
 
+from src.benchmark.measurement import BenchmarkMeasurement
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -24,16 +26,17 @@ def run_command(*args, **kwargs):
     return stdout, stderr
 
 
-def run_perf_on(*args):
+def run_perf_on(*args, **kwargs):
     """
     Run a command from within 'perf'; see https://perf.wiki.kernel.org/index.php/Tutorial; note: it would not be hard
     to add or remove events with '-e'
     :param args: a vararg list of the command to run
     :return: a tuple with the (stdout, stderr) strings or an exception is thrown
     """
-    perf_args = ['perf', 'stat', '-x;', '-r 5']
+    number_of_iterations_to_run = kwargs.pop('iterate', 5)
+    perf_args = ['perf', 'stat', '-x;', '-r ' + str(number_of_iterations_to_run)]
     perf_args.extend(args)
-    return run_command(*perf_args)
+    return run_command(*perf_args, **kwargs)
 
 
 def parse_perf_output(output):
@@ -70,7 +73,7 @@ def parse_perf_output(output):
     return measurements
 
 
-def analyze(command):
+def analyze(command, wrap_measurements=False):
     """
     :param command: a string version of the command, e.g. 'curl -s http://google.com'
     :return: a tuple with the command string and the measurements taken from running it, e.g.
@@ -84,4 +87,7 @@ def analyze(command):
         logging.info('Command `%s` has measurement %s = %s', command, key, measurements[key]['value'])
         logging.debug('Command `%s` has additional details for %s: %s', command, key, measurements[key])
 
-    return command, measurements
+    if wrap_measurements:
+        return BenchmarkMeasurement(command, measurements)
+    else:
+        return command, measurements
