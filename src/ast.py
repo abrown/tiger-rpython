@@ -103,7 +103,7 @@ class Program(RPythonizedObject):
         # this must be implemented in sub-classes
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other)
+        return isinstance(other, Program)
         # this should be implemented in sub-classes
 
 
@@ -170,7 +170,7 @@ class Value(Exp):
         pass
 
     def equals(self, other):
-        return isinstance(other, Value)  # RPythonizedObject.equals(self, other)
+        return isinstance(other, Value)  # isinstance(other, foo)
 
     def evaluate(self, env):
         return self
@@ -201,8 +201,7 @@ class IntegerValue(Value):
         self.integer = integer
 
     def value(self):
-        pass
-        # return self.integer
+        return self.integer
 
     @staticmethod
     def from_string(number):
@@ -270,7 +269,7 @@ class RecordValue(Value):
 
     def equals(self, other):
         return isinstance(other, RecordValue) and self.type.equals(other.type) and list_equals(self.values,
-                                                                                                      other.values)
+                                                                                               other.values)
 
 
 # EXPRESSIONS: LOCATORS AND STRUCTURE
@@ -291,7 +290,7 @@ class LValue(Bound):
             self.__class__.__name__, self.name, nullable_to_string(self.next), nullable_to_string(self.declaration))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name \
+        return isinstance(other, LValue) and self.name == other.name \
                and nullable_equals(self.next, other.next)
 
     @unroll_safe
@@ -353,7 +352,7 @@ class ArrayLValue(LValue):
             self.__class__.__name__, self.expression.to_string(), nullable_to_string(self.next))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.expression.equals(other.expression) \
+        return isinstance(other, ArrayLValue) and self.expression.equals(other.expression) \
                and nullable_equals(self.next, other.next)
 
 
@@ -377,7 +376,7 @@ class ArrayCreation(Exp):
             self.type_id.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.initial_value_expression.equals(
+        return isinstance(other, ArrayCreation) and self.initial_value_expression.equals(
             other.initial_value_expression) and self.length_expression.equals(
             other.length_expression) and self.type_id.equals(other.type_id)
 
@@ -409,7 +408,7 @@ class RecordCreation(Exp):
             self.__class__.__name__, self.type_id.to_string(), dict_to_string(self.fields))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.type_id.equals(other.type_id) \
+        return isinstance(other, RecordCreation) and self.type_id.equals(other.type_id) \
                and dict_equals(self.fields, other.fields)
 
     @unroll_safe
@@ -432,7 +431,6 @@ class RecordCreation(Exp):
 
 class Assign(Exp):
     _attrs_ = ['lvalue', 'expression']
-
     _immutable_fields_ = ['lvalue', 'expression']
 
     def __init__(self, lvalue, expression):
@@ -446,7 +444,7 @@ class Assign(Exp):
             self.__class__.__name__, self.lvalue.to_string(), self.expression.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.lvalue.equals(other.lvalue) and self.expression.equals(
+        return isinstance(other, Assign) and self.lvalue.equals(other.lvalue) and self.expression.equals(
             other.expression)
 
     @unroll_safe
@@ -507,7 +505,7 @@ class Sequence(Exp):
         return '%s(expressions=%s)' % (self.__class__.__name__, list_to_string(self.expressions))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and list_equals(self.expressions, other.expressions)
+        return isinstance(other, Sequence) and list_equals(self.expressions, other.expressions)
 
     @unroll_safe
     def evaluate(self, env):
@@ -533,7 +531,7 @@ class Let(Exp):
             self.__class__.__name__, list_to_string(self.declarations), list_to_string(self.expressions))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) \
+        return isinstance(other, Let) \
                and list_equals(self.declarations, other.declarations) \
                and list_equals(self.expressions, other.expressions)
 
@@ -573,7 +571,7 @@ class FunctionCall(Bound):
             self.__class__.__name__, self.name, list_to_string(self.arguments))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name \
+        return isinstance(other, FunctionCall) and self.name == other.name \
                and list_equals(self.arguments, other.arguments)
 
     @unroll_safe
@@ -644,7 +642,7 @@ class If(Exp):
             nullable_to_string(self.body_if_false))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.condition.equals(other.condition) \
+        return isinstance(other, If) and self.condition.equals(other.condition) \
                and self.body_if_true.equals(other.body_if_true) \
                and nullable_equals(self.body_if_false, other.body_if_false)
 
@@ -675,14 +673,14 @@ class While(Exp):
             self.__class__.__name__, self.condition.to_string(), self.body.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.condition.equals(other.condition) and self.body.equals(
+        return isinstance(other, While) and self.condition.equals(other.condition) and self.body.equals(
             other.body)
 
     def evaluate(self, env):
         result = None
         condition_value = self.condition.evaluate(env)
         assert isinstance(condition_value, IntegerValue)
-        while True:  # condition_value.integer != 0:
+        while condition_value.integer != 0:
             while_jitdriver.jit_merge_point(code=self, env=env, result=result, value=condition_value)
             # attempted 'env = promote(env)' here but this let to incorrect number of inner loops in sumprimes
             try:
@@ -714,7 +712,7 @@ class For(Exp):
             self.__class__.__name__, self.var, self.start.to_string(), self.end.to_string(), self.body.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.var == other.var and self.start.equals(
+        return isinstance(other, For) and self.var == other.var and self.start.equals(
             other.start) and self.end.equals(other.end) and self.body.equals(other.body)
 
     def convert_to_while(self):
@@ -768,7 +766,7 @@ class BinaryOperation(Exp):
         self.right = right
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.left.equals(other.left) and self.right.equals(other.right)
+        return isinstance(other, self.__class__) and self.left.equals(other.left) and self.right.equals(other.right)
 
     def to_string(self):
         return '%s(left=%s, right=%s)' % (self.__class__.__name__, self.left.to_string(), self.right.to_string())
@@ -793,7 +791,7 @@ class BinaryOperation(Exp):
 
 
 class Multiply(BinaryOperation):
-
+    @unroll_safe
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int * right_int)
@@ -801,6 +799,7 @@ class Multiply(BinaryOperation):
 
 class Divide(BinaryOperation):
 
+    @unroll_safe
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int // right_int)
@@ -815,35 +814,35 @@ class Add(BinaryOperation):
 
 
 class Subtract(BinaryOperation):
-
+    @unroll_safe
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int - right_int)
 
 
 class GreaterThanOrEquals(BinaryOperation):
-
+    @unroll_safe
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int >= right_int else IntegerValue(0)
 
 
 class LessThanOrEquals(BinaryOperation):
-
+    @unroll_safe
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int <= right_int else IntegerValue(0)
 
 
 class Equals(BinaryOperation):
-
+    @unroll_safe
     def evaluate(self, env):
         (left, right) = self.evaluate_sides_to_value(env)
         return IntegerValue(1) if left.equals(right) else IntegerValue(0)
 
 
 class NotEquals(BinaryOperation):
-
+    @unroll_safe
     def evaluate(self, env):
         (left, right) = self.evaluate_sides_to_value(env)
         return IntegerValue(1) if not left.equals(right) else IntegerValue(0)
@@ -857,21 +856,21 @@ class GreaterThan(BinaryOperation):
 
 
 class LessThan(BinaryOperation):
-
+    @unroll_safe
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int < right_int else IntegerValue(0)
 
 
 class And(BinaryOperation):
-
+    @unroll_safe
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int and right_int else IntegerValue(0)
 
 
 class Or(BinaryOperation):
-
+    @unroll_safe
     def evaluate(self, env):
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int or right_int else IntegerValue(0)
@@ -892,7 +891,7 @@ class TypeId(Bound):
         return '%s(name=%s)' % (self.__class__.__name__, self.name)
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name
+        return isinstance(other, TypeId) and self.name == other.name
 
     def resolve(self):
         declaration = self.declaration
@@ -915,7 +914,7 @@ class TypeDeclaration(Declaration):
         return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, self.type.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name and self.type.equals(other.type)
+        return isinstance(other, TypeDeclaration) and self.name == other.name and self.type.equals(other.type)
 
     @unroll_safe
     def evaluate(self, env):
@@ -938,7 +937,7 @@ class VariableDeclaration(Declaration):
             self.__class__.__name__, self.name, nullable_to_string(self.type), self.expression.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name \
+        return isinstance(other, VariableDeclaration) and self.name == other.name \
                and nullable_equals(self.type, other.type) and self.expression.equals(other.expression)
 
     @unroll_safe
@@ -962,7 +961,7 @@ class FunctionParameter(Declaration):
         return '%s(name=%s, type=%s)' % (self.__class__.__name__, self.name, nullable_to_string(self.type))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name \
+        return isinstance(other, FunctionParameter) and self.name == other.name \
                and nullable_equals(self.type, other.type)
 
 
@@ -997,7 +996,7 @@ class FunctionDeclaration(FunctionDeclarationBase):
             self.body.to_string())
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name \
+        return isinstance(other, FunctionDeclaration) and self.name == other.name \
                and list_equals(self.parameters, other.parameters) \
                and nullable_equals(self.return_type, other.return_type) \
                and self.body.equals(other.body)
@@ -1023,7 +1022,7 @@ class NativeFunctionDeclaration(FunctionDeclarationBase):
             self.__class__.__name__, self.name, list_to_string(self.parameters), nullable_to_string(self.return_type))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.name == other.name \
+        return isinstance(other, NativeFunctionDeclaration) and self.name == other.name \
                and list_equals(self.parameters, other.parameters) \
                and nullable_equals(self.return_type, other.return_type)
 
@@ -1086,7 +1085,7 @@ class ArrayType(Type):
         return '%s(type_name=%s)' % (self.__class__.__name__, self.type_name)
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.type_name == other.type_name
+        return isinstance(other, ArrayType) and self.type_name == other.type_name
 
 
 class RecordType(Type):
@@ -1108,7 +1107,7 @@ class RecordType(Type):
         return '%s(field_types=%s)' % (self.__class__.__name__, dict_to_string(self.field_types))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and dict_equals(self.field_types, other.field_types)
+        return isinstance(other, RecordType) and dict_equals(self.field_types, other.field_types)
 
 
 def list_classes_in_file(parent_class=None):
