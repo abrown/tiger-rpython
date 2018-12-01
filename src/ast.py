@@ -91,9 +91,9 @@ class Program(RPythonizedObject):
     """
     Tiger programs have three types of AST nodes: expressions, declarations, and types
     """
-    # _attrs_ = []
+    _attrs_ = []
+    _immutable_fields_ = []
 
-    # _immutable_fields_ = []
     #
     # def __init__(self):
     #     RPythonizedObject.__init__(self)
@@ -108,17 +108,17 @@ class Program(RPythonizedObject):
 
 
 class Exp(Program):
-    # _attrs_ = []
+    _attrs_ = []
+    _immutable_fields_ = []
 
-    # _immutable_fields_ = []
     def __init__(self):
         Program.__init__(self)
 
 
 class Declaration(Program):
-    # _attrs_ = ['name', 'parent', 'index']
+    _attrs_ = ['name', 'parent', 'index']
 
-    # _immutable_fields_ = ['name', 'parent', 'index']
+    _immutable_fields_ = ['name', 'parent', 'index']
 
     def __init__(self, name, parent=None, index=0):
         Program.__init__(self)
@@ -135,9 +135,8 @@ class Bound(Exp):
     """
     This subclass is used for describing AST nodes that are 'bound' to their referring declaration in scopes.py
     """
-    # _attrs_ = ['declaration']
-
-    # _immutable_fields_ = ['declaration']
+    _attrs_ = ['declaration']
+    _immutable_fields_ = ['declaration']
 
     def __init__(self, declaration):
         Exp.__init__(self)
@@ -148,9 +147,9 @@ class Bound(Exp):
 
 
 class Type(Program):
-    # _attrs_ = []
+    _attrs_ = []
 
-    # _immutable_fields_ = []
+    _immutable_fields_ = []
 
     def __init__(self):
         Program.__init__(self)
@@ -160,9 +159,8 @@ class Type(Program):
 
 
 class Value(Exp):
-    # _attrs_ = []
-
-    # _immutable_fields_ = []
+    _attrs_ = []
+    _immutable_fields_ = []
 
     def __init__(self):
         Exp.__init__(self)
@@ -179,9 +177,9 @@ class Value(Exp):
 
 
 class NilValue(Value):
-    # _attrs_ = []
+    _attrs_ = []
 
-    # _immutable_fields_ = []
+    _immutable_fields_ = []
 
     def __init__(self):
         Value.__init__(self)
@@ -194,9 +192,8 @@ class NilValue(Value):
 
 
 class IntegerValue(Value):
-    # _attrs_ = ['integer']
-
-    # _immutable_fields_ = ['integer']
+    _attrs_ = ['integer']
+    _immutable_fields_ = ['integer']
 
     def __init__(self, integer):
         Value.__init__(self)
@@ -220,9 +217,9 @@ class IntegerValue(Value):
 
 
 class StringValue(Value):
-    # _attrs_ = ['string']
+    _attrs_ = ['string']
 
-    # _immutable_fields_ = ['string']
+    _immutable_fields_ = ['string']
 
     def __init__(self, string):
         Value.__init__(self)
@@ -239,9 +236,8 @@ class StringValue(Value):
 
 
 class ArrayValue(Value):
-    # _attrs_ = ['length', 'array']
-
-    # _immutable_fields_ = ['length', 'array']
+    _attrs_ = ['length', 'array']
+    _immutable_fields_ = ['length', 'array']
 
     def __init__(self, length=0, initial_value=None):
         Value.__init__(self)
@@ -253,14 +249,14 @@ class ArrayValue(Value):
         return '%s(length=%d, array=%s)' % (self.__class__.__name__, self.length, list_to_string(self.array))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.length == other.length and list_equals(self.array,
-                                                                                                     other.array)
+        return isinstance(other, ArrayValue) and self.length == other.length and list_equals(self.array,
+                                                                                             other.array)
 
 
 class RecordValue(Value):
-    # _attrs_ = ['type', 'values']
+    _attrs_ = ['type', 'values']
 
-    # _immutable_fields_ = ['type', 'values']
+    _immutable_fields_ = ['type', 'values']
 
     def __init__(self, record_type, values=None):
         Value.__init__(self)
@@ -273,7 +269,7 @@ class RecordValue(Value):
         return '%s(type=%s, values=%s)' % (self.__class__.__name__, self.type.to_string(), list_to_string(self.values))
 
     def equals(self, other):
-        return RPythonizedObject.equals(self, other) and self.type.equals(other.type) and list_equals(self.values,
+        return isinstance(other, RecordValue) and self.type.equals(other.type) and list_equals(self.values,
                                                                                                       other.values)
 
 
@@ -281,9 +277,9 @@ class RecordValue(Value):
 
 
 class LValue(Bound):
-    # _attrs_ = ['name', 'next']
+    _attrs_ = ['name', 'next']
 
-    # _immutable_fields_ = ['name', 'next']
+    _immutable_fields_ = ['name', 'next']
 
     def __init__(self, name, next_lvalue=None, declaration=None):
         Bound.__init__(self, declaration)
@@ -338,15 +334,15 @@ class LValue(Bound):
 
 
 class RecordLValue(LValue):
-    # _attrs_ = []
-    # _immutable_fields_ = []
+    _attrs_ = []
+    _immutable_fields_ = []
     pass
 
 
 class ArrayLValue(LValue):
-    attrs_ = ['name', 'next', 'expression']
+    _attrs_ = ['name', 'next', 'expression']
 
-    # _immutable_fields_ = ['name', 'next', 'expression']
+    _immutable_fields_ = ['expression']
 
     def __init__(self, expression, next_lvalue=None):
         LValue.__init__(self, None, next_lvalue)
@@ -362,9 +358,9 @@ class ArrayLValue(LValue):
 
 
 class ArrayCreation(Exp):
-    # _attrs_ = ['length_expression', 'initial_value_expression', 'type_id']
+    _attrs_ = ['length_expression', 'initial_value_expression', 'type_id']
 
-    # _immutable_fields_ = ['length_expression', 'initial_value_expression', 'type_id']
+    _immutable_fields_ = ['length_expression', 'initial_value_expression', 'type_id']
 
     def __init__(self, type_id, length_expression, initial_value_expression):
         Exp.__init__(self)
@@ -397,9 +393,9 @@ class ArrayCreation(Exp):
 
 
 class RecordCreation(Exp):
-    # _attrs_ = ['type_id', 'fields']
+    _attrs_ = ['type_id', 'fields']
 
-    # _immutable_fields_ = ['type_id', 'fields']
+    _immutable_fields_ = ['type_id', 'fields']
 
     def __init__(self, type_id, fields):
         Exp.__init__(self)
@@ -435,9 +431,9 @@ class RecordCreation(Exp):
 
 
 class Assign(Exp):
-    # _attrs_ = ['lvalue', 'expression']
+    _attrs_ = ['lvalue', 'expression']
 
-    # _immutable_fields_ = ['lvalue', 'expression']
+    _immutable_fields_ = ['lvalue', 'expression']
 
     def __init__(self, lvalue, expression):
         Exp.__init__(self)
@@ -499,9 +495,9 @@ class Assign(Exp):
 
 
 class Sequence(Exp):
-    # _attrs_ = ['expressions']
+    _attrs_ = ['expressions']
 
-    # _immutable_fields_ = ['expressions']
+    _immutable_fields_ = ['expressions']
 
     def __init__(self, expressions):
         Exp.__init__(self)
@@ -522,9 +518,9 @@ class Sequence(Exp):
 
 
 class Let(Exp):
-    # _attrs_ = ['declarations', 'expressions', 'environment']
+    _attrs_ = ['declarations', 'expressions', 'environment']
 
-    # _immutable_fields_ = ['declarations', 'expressions']  # note that the environment is not declared immutable
+    _immutable_fields_ = ['declarations', 'expressions']  # note that the environment is not declared immutable
 
     def __init__(self, declarations, expressions):
         Exp.__init__(self)
@@ -562,9 +558,9 @@ class Let(Exp):
 
 
 class FunctionCall(Bound):
-    # _attrs_ = ['name', 'arguments']
+    _attrs_ = ['name', 'arguments']
 
-    # _immutable_fields_ = ['name', 'arguments']
+    _immutable_fields_ = ['name', 'arguments']
 
     def __init__(self, name, arguments, declaration=None):
         Bound.__init__(self, declaration)
@@ -632,9 +628,9 @@ class FunctionCall(Bound):
 
 
 class If(Exp):
-    # _attrs_ = ['condition', 'body_if_true', 'body_if_false']
+    _attrs_ = ['condition', 'body_if_true', 'body_if_false']
 
-    # _immutable_fields_ = ['condition', 'body_if_true', 'body_if_false']
+    _immutable_fields_ = ['condition', 'body_if_true', 'body_if_false']
 
     def __init__(self, condition, body_if_true, body_if_false=None):
         Exp.__init__(self)
@@ -665,9 +661,9 @@ class If(Exp):
 
 
 class While(Exp):
-    # _attrs_ = ['condition', 'body']
+    _attrs_ = ['condition', 'body']
 
-    # _immutable_fields_ = ['condition', 'body']
+    _immutable_fields_ = ['condition', 'body']
 
     def __init__(self, condition, body):
         Exp.__init__(self)
@@ -686,7 +682,7 @@ class While(Exp):
         result = None
         condition_value = self.condition.evaluate(env)
         assert isinstance(condition_value, IntegerValue)
-        while condition_value.integer != 0:
+        while True:  # condition_value.integer != 0:
             while_jitdriver.jit_merge_point(code=self, env=env, result=result, value=condition_value)
             # attempted 'env = promote(env)' here but this let to incorrect number of inner loops in sumprimes
             try:
@@ -699,9 +695,9 @@ class While(Exp):
 
 
 class For(Exp):
-    # _attrs_ = ['var', 'start', 'end', 'body', 'while_expression']
+    _attrs_ = ['var', 'start', 'end', 'body', 'while_expression']
 
-    # _immutable_fields_ = ['var', 'start', 'end', 'body', 'while_expression']
+    _immutable_fields_ = ['var', 'start', 'end', 'body', 'while_expression']
 
     def __init__(self, var, start, end, body):
         Exp.__init__(self)
@@ -742,9 +738,9 @@ class For(Exp):
 
 
 class Break(Exp):
-    # _attrs_ = []
+    _attrs_ = []
 
-    # _immutable_fields_ = []
+    _immutable_fields_ = []
 
     def __init__(self):
         Exp.__init__(self)
@@ -762,9 +758,9 @@ class BreakException(Exception):
 
 
 class BinaryOperation(Exp):
-    # _attrs_ = ['left', 'right']
+    _attrs_ = ['left', 'right']
 
-    # _immutable_fields_ = ['left', 'right']
+    _immutable_fields_ = ['left', 'right']
 
     def __init__(self, left, right):
         Exp.__init__(self)
@@ -885,9 +881,8 @@ class Or(BinaryOperation):
 
 
 class TypeId(Bound):
-    # _attrs_ = ['name']
-
-    # _immutable_fields_ = ['name']
+    _attrs_ = ['name']
+    _immutable_fields_ = ['name']
 
     def __init__(self, name, declaration=None):
         Bound.__init__(self, declaration)
@@ -908,9 +903,9 @@ class TypeId(Bound):
 
 
 class TypeDeclaration(Declaration):
-    # _attrs_ = ['type']
+    _attrs_ = ['type']
 
-    # _immutable_fields_ = ['type']
+    _immutable_fields_ = ['type']
 
     def __init__(self, name, type_id_or_struct, parent=None, index=0):
         Declaration.__init__(self, name, parent, index)
@@ -928,9 +923,9 @@ class TypeDeclaration(Declaration):
 
 
 class VariableDeclaration(Declaration):
-    # _attrs_ = ['type', 'expression']
+    _attrs_ = ['type', 'expression']
 
-    # _immutable_fields_ = ['type', 'expression']
+    _immutable_fields_ = ['type', 'expression']
 
     def __init__(self, name, type_id, expression, parent=None, index=0):
         Declaration.__init__(self, name, parent, index)
@@ -954,9 +949,9 @@ class VariableDeclaration(Declaration):
 
 
 class FunctionParameter(Declaration):
-    # _attrs_ = ['type']
+    _attrs_ = ['type']
 
-    # _immutable_fields_ = ['type']
+    _immutable_fields_ = ['type']
 
     def __init__(self, name, type_id=None, parent=None, index=0):
         Declaration.__init__(self, name, parent, index)
@@ -972,9 +967,8 @@ class FunctionParameter(Declaration):
 
 
 class FunctionDeclarationBase(Declaration):
-    # _attrs_ = ['parameters', 'return_type']
-
-    # _immutable_fields_ = ['parameters', 'return_type']
+    _attrs_ = ['parameters', 'return_type']
+    _immutable_fields_ = ['parameters', 'return_type']
 
     def __init__(self, name, parameters, return_type, parent=None, index=0):
         Declaration.__init__(self, name, parent, index)
@@ -985,9 +979,8 @@ class FunctionDeclarationBase(Declaration):
 
 
 class FunctionDeclaration(FunctionDeclarationBase):
-    # _attrs_ = ['body', 'environment', 'index']
-
-    # _immutable_fields_ = ['body', 'environment?', 'index']
+    _attrs_ = ['body', 'environment', 'index']
+    _immutable_fields_ = ['body', 'environment?', 'index']
 
     def __init__(self, name, parameters, return_type, body, environment=None, index=0):
         FunctionDeclarationBase.__init__(self, name, parameters, return_type)
@@ -1015,9 +1008,9 @@ class FunctionDeclaration(FunctionDeclarationBase):
 
 
 class NativeFunctionDeclaration(FunctionDeclarationBase):
-    # _attrs_ = []
+    _attrs_ = []
 
-    # _immutable_fields_ = []
+    _immutable_fields_ = []
 
     def __init__(self, name, parameters=None, return_type=None):
         FunctionDeclarationBase.__init__(self, name, parameters or [], return_type)
@@ -1036,9 +1029,9 @@ class NativeFunctionDeclaration(FunctionDeclarationBase):
 
 
 class NativeNoArgumentFunctionDeclaration(NativeFunctionDeclaration):
-    # _attrs_ = ['function']
+    _attrs_ = ['function']
 
-    # _immutable_fields_ = ['function']
+    _immutable_fields_ = ['function']
 
     def __init__(self, name, return_type, python_function):
         NativeFunctionDeclaration.__init__(self, name, [], return_type)
@@ -1050,9 +1043,9 @@ class NativeNoArgumentFunctionDeclaration(NativeFunctionDeclaration):
 
 
 class NativeOneArgumentFunctionDeclaration(NativeFunctionDeclaration):
-    # _attrs_ = ['function']
+    _attrs_ = ['function']
 
-    # _immutable_fields_ = ['function']
+    _immutable_fields_ = ['function']
 
     def __init__(self, name, parameters, return_type, python_function):
         NativeFunctionDeclaration.__init__(self, name, parameters, return_type)
@@ -1064,9 +1057,9 @@ class NativeOneArgumentFunctionDeclaration(NativeFunctionDeclaration):
 
 
 class NativeTwoArgumentFunctionDeclaration(NativeFunctionDeclaration):
-    # _attrs_ = ['function']
+    _attrs_ = ['function']
 
-    # _immutable_fields_ = ['function']
+    _immutable_fields_ = ['function']
 
     def __init__(self, name, parameters, return_type, python_function):
         NativeFunctionDeclaration.__init__(self, name, parameters, return_type)
@@ -1081,9 +1074,9 @@ class NativeTwoArgumentFunctionDeclaration(NativeFunctionDeclaration):
 
 
 class ArrayType(Type):
-    # _attrs_ = ['type_name']
+    _attrs_ = ['type_name']
 
-    # _immutable_fields_ = ['type_name']
+    _immutable_fields_ = ['type_name']
 
     def __init__(self, element_type):
         Type.__init__(self)
@@ -1097,9 +1090,9 @@ class ArrayType(Type):
 
 
 class RecordType(Type):
-    # _attrs_ = ['field_types', 'field_positions']
+    _attrs_ = ['field_types', 'field_positions']
 
-    # _immutable_fields_ = ['field_types', 'field_positions']
+    _immutable_fields_ = ['field_types', 'field_positions']
 
     def __init__(self, field_types):
         Type.__init__(self)

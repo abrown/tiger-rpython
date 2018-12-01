@@ -1,5 +1,5 @@
 class RPythonizedObject:
-    #_attrs_ = []
+    _attrs_ = []
 
     def __init__(self): pass
 
