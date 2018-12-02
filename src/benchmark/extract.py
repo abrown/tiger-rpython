@@ -1,5 +1,6 @@
 from os.path import basename
 
+# TODO replace with BenchmarkMeasurement
 
 def extract_benchmark_name(cmd):
     return basename(cmd).replace('.tig', '')
