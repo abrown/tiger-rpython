@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 
 BENCHMARKS = ['permute', 'queens', 'sieve', 'sumprimes', 'towers']
 PATH_TO_BIN = 'bin'
-PATH_TO_BENCHMARKS = 'src/benchmark/warmup'
+PATH_TO_BENCHMARKS = 'src/benchmark/suite-looped'
 PATH_TO_PICKLED_DATA = 'var/jit-vs-no-jit-vs-c.pkl'
 
 results = OrderedDict()
@@ -32,8 +32,8 @@ for feature in ['O0', 'O2']:
 # add RPython benchmarks (jit and no-jit)
 for feature in ['jit', 'no-jit']:
     results[feature] = OrderedDict()
+    interpreter = '%s/tiger-interpreter%s' % (PATH_TO_BIN, '' if feature == 'jit' else '-no-jit')
     for benchmark in BENCHMARKS:
-        interpreter = '%s/tiger-interpreter-no-jit' % PATH_TO_BIN
         program = '%s/%s.tig' % (PATH_TO_BENCHMARKS, benchmark)
         stdout, stderr = run_perf_on(interpreter, program, env={'DEBUG': '1'}, iterate=1)
 
