@@ -14,13 +14,13 @@ logging.info("Collection data from: %s", PATH_TO_PICKLED_DATA)
 with open(PATH_TO_PICKLED_DATA, 'rb') as f:
     data = pickle.load(f)
 
-
 # show variance
 for name, loop_times in data.items():
     mean = sum(loop_times) / len(loop_times)
     error = sum([abs(float(c - mean)) for c in loop_times]) / len(loop_times) / mean
     logging.info("Benchmark %s executed on average %s cycles with a %s%% error", name, mean, round(error * 100, 3))
-    logging.info("Benchmark %s executed the first iteration %s%% away from average", name, round((loop_times[0] - mean) / float(mean) * 100, 3))
+    logging.info("Benchmark %s executed the first iteration %s%% away from average", name,
+                 round((loop_times[0] - mean) / float(mean) * 100, 3))
 
 # draw plot
 

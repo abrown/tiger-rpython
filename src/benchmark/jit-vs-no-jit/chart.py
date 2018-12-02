@@ -32,7 +32,8 @@ def cycles(benchmark):
 
 def average_speedup(faster, slower):
     times_diff = [float(s) / float(f) for (s, f) in zip(slower, faster)]
-    return reduce(lambda x, y: x * y, times_diff) ** (1.0 / len(times_diff))
+    speedup = reduce(lambda x, y: x * y, times_diff) ** (1.0 / len(times_diff))
+    return '%sx' % round(speedup, 3)
 
 
 # calculate average difference between environments
