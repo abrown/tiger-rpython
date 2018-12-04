@@ -961,7 +961,7 @@ class FunctionDeclarationBase(Declaration):
 
 class FunctionDeclaration(FunctionDeclarationBase):
     _attrs_ = ['body', 'environment', 'index']
-    _immutable_fields_ = ['body', 'environment?', 'index']
+    _immutable_fields_ = ['body', 'index']
 
     def __init__(self, name, parameters, return_type, body, environment=None, index=0):
         FunctionDeclarationBase.__init__(self, name, parameters, return_type)
