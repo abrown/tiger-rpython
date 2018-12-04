@@ -17,7 +17,6 @@ class ParseError(Exception):
 
     def to_string(self):
         return self.reason + " at token " + self.token.to_string()
-        # TODO sub-class from RPythonizedObject?
 
     def __str__(self):
         return self.to_string()
@@ -64,8 +63,8 @@ OPERATORS = {
 
 
 class Parser:
-    def __init__(self, text, file=None):
-        self.tokenizer = Tokenizer(text, file)
+    def __init__(self, text, source_file=None):
+        self.tokenizer = Tokenizer(text, source_file)
 
     def parse(self, native_function_declarations=None):
         expression = self.expression()
@@ -93,18 +92,18 @@ class Parser:
 
     def array_from_lvalue(self, lvalue):
         assert isinstance(lvalue, LValue)
-        type = lvalue.name
-        next = lvalue.next
-        assert isinstance(next, ArrayLValue)
-        exp1 = next.expression
+        type_name = lvalue.name
+        next_lvalue = lvalue.next
+        assert isinstance(next_lvalue, ArrayLValue)
+        exp1 = next_lvalue.expression
         exp2 = self.expression()
-        return ArrayCreation(TypeId(type), exp1, exp2)
+        return ArrayCreation(TypeId(type_name), exp1, exp2)
 
     def array_lvalue(self):
         exp = self.expression()
         self.__expect(SymbolToken(']'))
-        next = self.lvalue_next()
-        return ArrayLValue(exp, next)
+        next_lvalue = self.lvalue_next()
+        return ArrayLValue(exp, next_lvalue)
 
     def declaration(self):
         if self.__accept_type(KeywordToken):
@@ -211,26 +210,26 @@ class Parser:
 
     def function_declaration(self):
         self.__expect(KeywordToken('function'))
-        id = self.id()
+        function_name = self.id()
         self.__expect(SymbolToken('('))
-        params = self.parameters()
+        parameters = self.parameters()
         self.__expect(SymbolToken(')'))
         return_type = None
         if self.__accept_and_consume(SymbolToken(':')):
             return_type = self.type()
         self.__expect(SymbolToken('='))
-        exp = self.expression()
-        return FunctionDeclaration(id, params, return_type, exp)
+        body = self.expression()
+        return FunctionDeclaration(function_name, parameters, return_type, body)
 
     def id(self):
         token = self.__expect_type(IdentifierToken)
         return token.value
 
     def id_field(self):
-        id = self.id()
+        field_name = self.id()
         self.__expect(SymbolToken('='))
         exp = self.expression()
-        return id, exp
+        return field_name, exp
 
     def id_started(self):
         """An ID has been peeked above, peek further..."""
@@ -274,17 +273,17 @@ class Parser:
         return Let(decs, exps)
 
     def lvalue(self):
-        id = self.id()
-        next = self.lvalue_next()
-        return LValue(id, next)
+        lvalue_name = self.id()
+        next_lvalue = self.lvalue_next()
+        return LValue(lvalue_name, next_lvalue)
 
     def lvalue_next(self):
-        next = None
+        next_lvalue = None
         if self.__accept_and_consume(SymbolToken('.')):
-            next = self.record_lvalue()
+            next_lvalue = self.record_lvalue()
         elif self.__accept_and_consume(SymbolToken('[')):
-            next = self.array_lvalue()
-        return next
+            next_lvalue = self.array_lvalue()
+        return next_lvalue
 
     def lvalue_started(self, lvalue):
         if self.__accept_and_consume(SymbolToken(':=')):
@@ -315,26 +314,26 @@ class Parser:
         return PRECEDENCE[token.value]
 
     def record(self):
-        type = self.__expect_type(IdentifierToken)
+        type_token = self.__expect_type(IdentifierToken)
         self.__expect(SymbolToken('{'))
         fields = OrderedDict()
         while self.__accept_type(IdentifierToken):
-            id, exp = self.id_field()
-            fields[id] = exp
-            token2 = self.__next()
-            if self.__accept(SymbolToken(','), token2):
+            field_name, exp = self.id_field()
+            fields[field_name] = exp
+            token = self.__next()
+            if self.__accept(SymbolToken(','), token):
                 pass
-            elif self.__accept(SymbolToken('}'), token2):
+            elif self.__accept(SymbolToken('}'), token):
                 break
             else:
-                raise ParseError('Expected either , or }', token2)
+                raise ParseError('Expected either , or }', token)
             # TODO possibility for garbage after ', ...'
-        return RecordCreation(TypeId(type.value), fields)
+        return RecordCreation(TypeId(type_token.value), fields)
 
     def record_lvalue(self):
-        id = self.__expect_type(IdentifierToken)
-        next = self.lvalue_next()
-        return RecordLValue(id.value, next)
+        lvalue_name = self.__expect_type(IdentifierToken)
+        next_lvalue = self.lvalue_next()
+        return RecordLValue(lvalue_name.value, next_lvalue)
 
     def sequence(self):
         exps = []
@@ -358,17 +357,17 @@ class Parser:
             return RecordType(type_fields)
         elif self.__accept(KeywordToken('array'), token):
             self.__expect(KeywordToken('of'))
-            id = self.__expect_type(IdentifierToken)
-            return ArrayType(id.value)
+            type_name = self.__expect_type(IdentifierToken)
+            return ArrayType(type_name.value)
         else:
             raise ExpectationError('a type definition', token)
 
     def type_declaration(self):
         self.__expect(KeywordToken('type'))
-        id = self.id()
+        type_name = self.id()
         self.__expect(SymbolToken('='))
         ty = self.type()
-        return TypeDeclaration(id, ty)
+        return TypeDeclaration(type_name, ty)
 
     def type_fields(self):
         type_fields = OrderedDict()
@@ -381,10 +380,10 @@ class Parser:
         return type_fields
 
     def type_field(self):
-        id = self.id()
+        field_name = self.id()
         self.__expect(SymbolToken(':'))
-        type = self.type_id()
-        return id, type
+        type_id = self.type_id()
+        return field_name, type_id
 
     def type_id(self):
         type_id = self.__expect_type(IdentifierToken)
@@ -392,13 +391,13 @@ class Parser:
 
     def variable_declaration(self):
         self.__expect(KeywordToken('var'))
-        id = self.id()
+        name = self.id()
         type_id = None
         if self.__accept_and_consume(SymbolToken(':')):
             type_id = self.type()
         self.__expect(SymbolToken(':='))
         exp = self.expression()
-        return VariableDeclaration(id, type_id, exp)
+        return VariableDeclaration(name, type_id, exp)
 
     def while_do(self):
         self.__expect(KeywordToken('while'))
