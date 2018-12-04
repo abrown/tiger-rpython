@@ -1,6 +1,6 @@
 import unittest
 
-from src.ast import add_immutable_fields
+from src.rpythonizer import add_immutable_fields
 
 
 class A:
@@ -30,6 +30,8 @@ class TestRPythonizing(unittest.TestCase):
     def test_init_is_not_a_function(self):
         add_immutable_fields(C)
         self.assertTrue(not hasattr(C, '_immutable_fields_'))
+
+
 
 
 if __name__ == '__main__':
