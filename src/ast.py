@@ -677,9 +677,10 @@ class While(Exp):
             other.body)
 
     def evaluate(self, env):
-        result = None
         condition_value = self.condition.evaluate(env)
         assert isinstance(condition_value, IntegerValue)
+
+        result = None
         while condition_value.integer != 0:
             while_jitdriver.jit_merge_point(code=self, env=env, result=result, value=condition_value)
             # attempted 'env = promote(env)' here but this let to incorrect number of inner loops in sumprimes
@@ -687,7 +688,9 @@ class While(Exp):
                 result = self.body.evaluate(env)
             except BreakException:
                 break
+
             condition_value = self.condition.evaluate(env)
+            assert isinstance(condition_value, IntegerValue)
 
         return result
 
@@ -766,7 +769,7 @@ class BinaryOperation(Exp):
         self.right = right
 
     def equals(self, other):
-        return isinstance(other, self.__class__) and self.left.equals(other.left) and self.right.equals(other.right)
+        return False  # we should not be comparing (or really constructing) BinaryOperators
 
     def to_string(self):
         return '%s(left=%s, right=%s)' % (self.__class__.__name__, self.left.to_string(), self.right.to_string())
@@ -1117,7 +1120,7 @@ def list_classes_in_file(parent_class=None):
         assert inspect.isclass(parent_class)
 
         def class_filter(c):
-            return inspect.isclass(c) and issubclass(c, Program)
+            return inspect.isclass(c) and issubclass(c, parent_class)
     else:
         class_filter = inspect.isclass
     return inspect.getmembers(sys.modules[__name__], class_filter)
@@ -1188,7 +1191,22 @@ def add_attrs(klass):
         setattr(klass, attrs_name, args)
         print('Added _attrs_ to %s: %s' % (klass.__name__, args))
 
+
+def add_equals(klass):
+    func_name = 'equals'
+    if func_name not in klass.__dict__:
+        def func(self, other):
+            return isinstance(other, klass) and self.left.equals(other.left) and self.right.equals(other.right)
+
+        setattr(klass, func_name, func)
+        print('Added %s to %s' % (func_name, klass.__name__))
+
+
 # fix-up all AST nodes in this file by adding RPython's _immutable_fields_ annotation
 # for name, cls in list_classes_in_file(Program):
 #     add_immutable_fields(cls)
 #     add_attrs(cls)
+
+# fix-up all AST nodes in this file by adding RPython's _immutable_fields_ annotation
+for name, cls in list_classes_in_file(BinaryOperation):
+    add_equals(cls)
