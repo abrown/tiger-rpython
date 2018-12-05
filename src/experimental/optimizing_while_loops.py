@@ -5,7 +5,7 @@ import interpretation_mechanisms
 from src.ast import IntegerValue, BreakException, Let, VariableDeclaration, Sequence, LValue, Assign, While, LessThan, \
     Add
 from src.environments.environment_with_paths import EnvironmentLevel
-from src.native_functions import create_environment_with_natives
+from src.native_functions import create_environment_with_natives, create_native_functions
 from src.parser import Parser
 
 try:
@@ -61,7 +61,7 @@ class TestOptimizingWhileLoops(unittest.TestCase):
         """
 
         def test():
-            program = Parser('let var a := 0 in (while a < 100 do a := a + 1; a) end').parse()
+            program = Parser('let var a := 0 in (while a < 100 do a := a + 1; a) end').parse(create_native_functions())
             environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
             result = program.evaluate(environment)
             assert isinstance(result, IntegerValue)
