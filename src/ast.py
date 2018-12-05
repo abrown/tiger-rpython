@@ -175,6 +175,7 @@ class Value(Exp):
         return isinstance(other, Value)
 
     def evaluate(self, env):
+        promote(self)
         return self
 
 
@@ -293,6 +294,7 @@ class LValue(Bound):
 
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         lvalue = self
 
         # extract normal lvalue from environment
@@ -320,6 +322,7 @@ class LValue(Bound):
 
     @unroll_safe
     def resolve(self):
+        promote(self)
         declaration = self.declaration
         assert isinstance(declaration, Declaration)
         parent = declaration.parent
@@ -380,6 +383,7 @@ class ArrayCreation(Exp):
 
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         length = self.length_expression.evaluate(env)
         assert (isinstance(length, IntegerValue))
         initial_value = self.initial_value_expression.evaluate(env)
@@ -409,6 +413,7 @@ class RecordCreation(Exp):
 
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         env, env_index = self.type_id.resolve()
         record_type = env.get(env_index)
         assert (isinstance(record_type, RecordType))
@@ -445,6 +450,7 @@ class Assign(Exp):
 
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         value = self.expression.evaluate(env)
 
         lvalue = self.lvalue
@@ -504,6 +510,7 @@ class Sequence(Exp):
 
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         value = None
         for expression in self.expressions:
             value = expression.evaluate(env)
@@ -531,6 +538,7 @@ class Let(Exp):
 
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         self.environment = self.environment.push(len(self.declarations))
 
         for declaration in self.declarations:
@@ -570,6 +578,7 @@ class FunctionCall(Bound):
     @unroll_safe
     def evaluate(self, env):
         function_jitdriver.jit_merge_point(code=self)
+        promote(self)
 
         # find declaration
         declaration = self.declaration
@@ -638,6 +647,7 @@ class If(Exp):
 
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         condition_value = self.condition.evaluate(env)
         assert isinstance(condition_value, IntegerValue)
         result = None
@@ -666,6 +676,7 @@ class While(Exp):
             other.body)
 
     def evaluate(self, env):
+        promote(self)
         condition_value = self.condition.evaluate(env)
         assert isinstance(condition_value, IntegerValue)
 
@@ -722,6 +733,7 @@ class For(Exp):
 
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         self.while_expression.evaluate(env)
         return None
 
@@ -735,6 +747,7 @@ class Break(Exp):
 
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         raise BreakException()
 
 
@@ -766,6 +779,7 @@ class BinaryOperation(Exp):
     # eventually this could be specialized or inlined
     @unroll_safe
     def evaluate_sides_to_value(self, env):
+        promote(self)
         left_value = self.left.evaluate(env)
         assert isinstance(left_value, Value)
         right_value = self.right.evaluate(env)
@@ -775,6 +789,7 @@ class BinaryOperation(Exp):
     # eventually this could be specialized or inlined
     @unroll_safe
     def evaluate_sides_to_int(self, env):
+        promote(self)
         left_value = self.left.evaluate(env)
         assert isinstance(left_value, IntegerValue)
         right_value = self.right.evaluate(env)
@@ -785,6 +800,7 @@ class BinaryOperation(Exp):
 class Multiply(BinaryOperation):
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int * right_int)
 
@@ -792,6 +808,7 @@ class Multiply(BinaryOperation):
 class Divide(BinaryOperation):
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int // right_int)
 
@@ -799,6 +816,7 @@ class Divide(BinaryOperation):
 class Add(BinaryOperation):
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int + right_int)
 
@@ -806,6 +824,7 @@ class Add(BinaryOperation):
 class Subtract(BinaryOperation):
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(left_int - right_int)
 
@@ -813,6 +832,7 @@ class Subtract(BinaryOperation):
 class GreaterThanOrEquals(BinaryOperation):
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int >= right_int else IntegerValue(0)
 
@@ -820,6 +840,7 @@ class GreaterThanOrEquals(BinaryOperation):
 class LessThanOrEquals(BinaryOperation):
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int <= right_int else IntegerValue(0)
 
@@ -834,6 +855,7 @@ class Equals(BinaryOperation):
 class NotEquals(BinaryOperation):
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         (left, right) = self.evaluate_sides_to_value(env)
         return IntegerValue(1) if not left.equals(right) else IntegerValue(0)
 
@@ -841,6 +863,7 @@ class NotEquals(BinaryOperation):
 class GreaterThan(BinaryOperation):
 
     def evaluate(self, env):
+        promote(self)
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int > right_int else IntegerValue(0)
 
@@ -848,6 +871,7 @@ class GreaterThan(BinaryOperation):
 class LessThan(BinaryOperation):
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int < right_int else IntegerValue(0)
 
@@ -855,6 +879,7 @@ class LessThan(BinaryOperation):
 class And(BinaryOperation):
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int and right_int else IntegerValue(0)
 
@@ -862,6 +887,7 @@ class And(BinaryOperation):
 class Or(BinaryOperation):
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         (left_int, right_int) = self.evaluate_sides_to_int(env)
         return IntegerValue(1) if left_int or right_int else IntegerValue(0)
 
@@ -884,6 +910,7 @@ class TypeId(Bound):
         return isinstance(other, TypeId) and self.name == other.name
 
     def resolve(self):
+        promote(self)
         declaration = self.declaration
         assert isinstance(declaration, TypeDeclaration)
         parent = declaration.parent
@@ -907,6 +934,7 @@ class TypeDeclaration(Declaration):
 
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         env.set(self.index, self.type)
 
 
@@ -930,6 +958,7 @@ class VariableDeclaration(Declaration):
 
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         value = self.expression.evaluate(env)
         # dynamic type-checking should go here
         env.set(self.index, value)
@@ -988,6 +1017,7 @@ class FunctionDeclaration(FunctionDeclarationBase):
 
     @unroll_safe
     def evaluate(self, env):
+        promote(self)
         env.set(self.index, self)
 
 
@@ -1020,6 +1050,7 @@ class NativeNoArgumentFunctionDeclaration(NativeFunctionDeclaration):
         self.function = python_function  # remember that RPython will not accept a lambda
 
     def call(self, arguments):
+        promote(self)
         assert len(arguments) == 0
         return self.function()
 
@@ -1033,6 +1064,7 @@ class NativeOneArgumentFunctionDeclaration(NativeFunctionDeclaration):
         self.function = python_function  # remember that RPython will not accept a lambda
 
     def call(self, arguments):
+        promote(self)
         assert len(arguments) == 1
         return self.function(arguments[0])
 
@@ -1046,6 +1078,7 @@ class NativeTwoArgumentFunctionDeclaration(NativeFunctionDeclaration):
         self.function = python_function  # remember that RPython will not accept a lambda
 
     def call(self, arguments):
+        promote(self)
         assert len(arguments) == 2
         return self.function(arguments[0], arguments[1])
 
