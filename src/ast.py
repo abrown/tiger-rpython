@@ -3,10 +3,10 @@ from src.rpythonized_object import RPythonizedObject, list_equals, dict_equals, 
     dict_to_string, nullable_to_string
 
 # Begin RPython setup; catch import errors so this can still run in CPython...
-from src.rpythonizer import list_classes_in_file, add_binary_operation_equals, always_equals_false
+from src.rpythonizer import list_classes_in_file, add_binary_operation_equals
 
 try:
-    from rpython.rlib.jit import JitDriver, elidable, promote, unroll_safe, jit_debug, we_are_jitted
+    from rpython.rlib.jit import JitDriver, assert_green, elidable, promote, unroll_safe, jit_debug, we_are_jitted
     from rpython.rlib.objectmodel import import_from_mixin, specialize
 except ImportError:
     class JitDriver(object):
@@ -15,6 +15,10 @@ except ImportError:
         def jit_merge_point(self, **kw): pass
 
         def can_enter_jit(self, **kw): pass
+
+
+    def assert_green(value):
+        pass
 
 
     def elidable(func):
@@ -119,7 +123,7 @@ class Exp(Program):
 
 class Declaration(Program):
     _attrs_ = ['name', 'parent', 'index']
-    _immutable_fields_ = ['name', 'parent', 'index']
+    _immutable_fields_ = ['name', 'parent?', 'index?']
 
     def __init__(self, name, parent=None, index=0):
         Program.__init__(self)
@@ -136,7 +140,7 @@ class Bound(Exp):
     This subclass is used for describing AST nodes that are 'bound' to their referring declaration in scopes.py
     """
     _attrs_ = ['declaration']
-    _immutable_fields_ = ['declaration']
+    _immutable_fields_ = ['declaration?']
 
     def __init__(self, declaration):
         Exp.__init__(self)
@@ -317,6 +321,7 @@ class LValue(Bound):
     @unroll_safe
     def resolve(self):
         declaration = self.declaration
+        assert isinstance(declaration, Declaration)
         parent = declaration.parent
         if isinstance(parent, Let):
             return parent.environment, declaration.index
@@ -960,17 +965,15 @@ class FunctionDeclarationBase(Declaration):
 
 
 class FunctionDeclaration(FunctionDeclarationBase):
-    _attrs_ = ['body', 'environment', 'index']
-    _immutable_fields_ = ['body', 'index']
+    _attrs_ = ['body', 'environment']
+    _immutable_fields_ = ['body']
 
-    def __init__(self, name, parameters, return_type, body, environment=None, index=0):
-        FunctionDeclarationBase.__init__(self, name, parameters, return_type)
+    def __init__(self, name, parameters, return_type, body, environment=None, parent=None, index=0):
+        FunctionDeclarationBase.__init__(self, name, parameters, return_type, parent, index)
         assert isinstance(body, Exp)
         self.body = body
         self.environment = environment or Environment.empty(None, len(
             self.parameters))  # to be reset when the function declaration is evaluated
-        assert index >= 0
-        self.index = index
 
     def to_string(self):
         return '%s(name=%s, parameters=%s, return_type=%s, body=%s)' % (
