@@ -16,7 +16,7 @@ do
   echo -e "${LOG_PREFIX}  Rebasing environment commit on top:"
   pushd ${CLONE_DIR}
   git checkout $BRANCH
-  git rebase master
+  #git rebase master
   #git push --force  # to keep the repository up to date
 
   echo -e "${LOG_PREFIX}  Now the history is:"
