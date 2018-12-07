@@ -4,7 +4,7 @@ set -e
 PROJECT_DIR=$(realpath $(dirname "${BASH_SOURCE[0]}")/../../..)
 PYPY_DIR=$(realpath ${PROJECT_DIR}/../pypy)
 
-for BRANCH in "env-with-dicts" "env-with-paths" "env-with-paths-unabstracted"
+for BRANCH in "env-with-dicts" "env-with-paths" "env-embedded-in-ast"
 do
   CLONE_DIR=/tmp/tiger-rpython-${BRANCH}
   LOG_PREFIX="\n[${BRANCH}] >"
@@ -17,7 +17,7 @@ do
   pushd ${CLONE_DIR}
   git checkout $BRANCH
   git rebase master
-  git push --force  # to keep the repository up to date
+  #git push --force  # to keep the repository up to date
 
   echo -e "${LOG_PREFIX}  Now the history is:"
   git log --oneline -n 5

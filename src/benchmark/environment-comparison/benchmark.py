@@ -8,11 +8,13 @@ from src.benchmark.perf import analyze, run_command
 # setup logging
 logging.basicConfig(level=logging.INFO)
 
+PATH_TO_INTERPRETER = 'bin/tiger-interpreter'
+PATH_TO_BENCHMARKS = 'src/benchmark/suite-single'
+
 # gather data
-path_to_interpreter = 'bin/tiger-interpreter'
-path_to_benchmarks = 'src/benchmark/environment-comparison'
-benchmark_programs = [join(path_to_benchmarks, file) for file in listdir(path_to_benchmarks) if file.endswith('.tig')]
-data = [analyze(path_to_interpreter + ' ' + benchmark) for benchmark in benchmark_programs]
+benchmark_programs = [join(PATH_TO_BENCHMARKS, filename) for filename in listdir(PATH_TO_BENCHMARKS) if
+                      filename.endswith('.tig')]
+data = [analyze(PATH_TO_INTERPRETER + ' ' + benchmark) for benchmark in benchmark_programs]
 
 # find git branch
 git_branch = run_command('git', 'rev-parse', '--abbrev-ref', 'HEAD')[0]
