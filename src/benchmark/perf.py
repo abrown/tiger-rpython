@@ -1,7 +1,6 @@
 import csv
 import logging
 import subprocess
-
 # setup logging
 from collections import OrderedDict
 
@@ -14,7 +13,8 @@ def run_command(*args, **kwargs):
     """
     Run a command, capturing the output
     :param args: a vararg list of the command to run
-    :param kwargs: any additional options to pass unmodified to popen, see https://docs.python.org/2/library/subprocess.html#subprocess.Popen
+    :param kwargs: any additional options to pass unmodified to popen, see
+    https://docs.python.org/2/library/subprocess.html#subprocess.Popen
     :return: a tuple with the (stdout, stderr) strings or an exception is thrown
     """
     logging.info("Running: %s", ' '.join(args))
@@ -76,6 +76,7 @@ def parse_perf_output(output):
 def analyze(command, wrap_measurements=False):
     """
     :param command: a string version of the command, e.g. 'curl -s http://google.com'
+    :param wrap_measurements: if set to true, use the new BenchmarkMeasurement helper class to wrap measurements
     :return: a tuple with the command string and the measurements taken from running it, e.g.
     ('ls', {'task-clock': {'value': '52.5', ...}, 'instructions': {...}, ...})
     """

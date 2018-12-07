@@ -3,7 +3,7 @@ import unittest
 import interpretation_mechanisms
 # Begin RPython setup; catch import errors so this can still run in CPython...
 from src.ast import IntegerValue, For, BreakException, Let, VariableDeclaration, Sequence, LValue, Assign, Subtract
-from src.environment import Environment, EnvironmentLevel
+from src.environments.environment_with_paths import Environment, EnvironmentLevel
 from src.native_functions import create_environment_with_natives
 from src.parser import Parser
 
@@ -99,15 +99,15 @@ class TestOptimizingForLoops(unittest.TestCase):
 
         def test():
             # output of printing the parsed version: Let(declarations=[VariableDeclaration(name=a, type=None, exp=IntegerValue(0))], expressions=[Sequence(expressions=[For(var=i, start=IntegerValue(1), end=IntegerValue(9), body=Assign(lvalue=LValue(name=a, next=None), expression=Subtract(left=LValue(name=a, next=None), right=LValue(name=i, next=None)))), LValue(name=a, next=None)])])
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type_id=None, expression=IntegerValue(0))],
                           expressions=[Sequence(
                               expressions=[For(var='i', start=IntegerValue(1), end=IntegerValue(9),
-                                               body=Assign(lvalue=LValue(name='a', next=None),
+                                               body=Assign(lvalue=LValue(name='a', next_lvalue=None),
                                                            expression=Subtract(
-                                                               left=LValue(name='a', next=None),
+                                                               left=LValue(name='a', next_lvalue=None),
                                                                right=LValue(name='i',
-                                                                            next=None)))),
-                                           LValue(name='a', next=None)])])
+                                                                            next_lvalue=None)))),
+                                           LValue(name='a', next_lvalue=None)])])
             program = promote(program)
             environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
             result = program.evaluate(environment)
@@ -132,15 +132,15 @@ class TestOptimizingForLoops(unittest.TestCase):
 
         def test():
             unused_program = Parser('let var a := 0 in a end')  # this is never used
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type_id=None, expression=IntegerValue(0))],
                           expressions=[Sequence(
                               expressions=[For(var='i', start=IntegerValue(1), end=IntegerValue(9),
-                                               body=Assign(lvalue=LValue(name='a', next=None),
+                                               body=Assign(lvalue=LValue(name='a', next_lvalue=None),
                                                            expression=Subtract(
-                                                               left=LValue(name='a', next=None),
+                                                               left=LValue(name='a', next_lvalue=None),
                                                                right=LValue(name='i',
-                                                                            next=None)))),
-                                           LValue(name='a', next=None)])])
+                                                                            next_lvalue=None)))),
+                                           LValue(name='a', next_lvalue=None)])])
             program = promote(program)
             environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
             result = program.evaluate(environment)
@@ -200,15 +200,15 @@ class TestOptimizingForLoops(unittest.TestCase):
             # adding this line creates more jitcodes in /tmp/usession-exploration-abrown/jitcodes which reduces the number of operations
             Parser('let var a := 0 in a end').parse()
 
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type_id=None, expression=IntegerValue(0))],
                           expressions=[Sequence(
                               expressions=[ExternalMergePointFor(var='i', start=IntegerValue(1), end=IntegerValue(9),
-                                                                 body=Assign(lvalue=LValue(name='a', next=None),
+                                                                 body=Assign(lvalue=LValue(name='a', next_lvalue=None),
                                                                              expression=Subtract(
-                                                                                 left=LValue(name='a', next=None),
+                                                                                 left=LValue(name='a', next_lvalue=None),
                                                                                  right=LValue(name='i',
-                                                                                              next=None)))),
-                                           LValue(name='a', next=None)])])
+                                                                                              next_lvalue=None)))),
+                                           LValue(name='a', next_lvalue=None)])])
             environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
             result = program.evaluate(environment)
             assert isinstance(result, IntegerValue)
@@ -321,15 +321,15 @@ class TestOptimizingForLoops(unittest.TestCase):
             # adding this line creates more jitcodes in /tmp/usession-exploration-abrown/jitcodes which reduces the number of operations
             Parser('let var a := 0 in a end').parse()
 
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type_id=None, expression=IntegerValue(0))],
                           expressions=[Sequence(
                               expressions=[InternalMergePointFor(var='i', start=IntegerValue(1), end=IntegerValue(9),
-                                                                 body=Assign(lvalue=LValue(name='a', next=None),
+                                                                 body=Assign(lvalue=LValue(name='a', next_lvalue=None),
                                                                              expression=Subtract(
-                                                                                 left=LValue(name='a', next=None),
+                                                                                 left=LValue(name='a', next_lvalue=None),
                                                                                  right=LValue(name='i',
-                                                                                              next=None)))),
-                                           LValue(name='a', next=None)])])
+                                                                                              next_lvalue=None)))),
+                                           LValue(name='a', next_lvalue=None)])])
             environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
             result = program.evaluate(environment)
             assert isinstance(result, IntegerValue)
@@ -383,17 +383,17 @@ class TestOptimizingForLoops(unittest.TestCase):
             # adding this line creates more jitcodes in /tmp/usession-exploration-abrown/jitcodes which reduces the number of operations
             Parser('let var a := 0 in a end').parse()
 
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type_id=None, expression=IntegerValue(0))],
                           expressions=[Sequence(
                               expressions=[InternalMergePointFor(var='i', start=IntegerValue(1), end=IntegerValue(9),
-                                                                 body=Assign(lvalue=LValue(name='a', next=None),
+                                                                 body=Assign(lvalue=LValue(name='a', next_lvalue=None),
                                                                              expression=Subtract(
-                                                                                 left=LValue(name='a', next=None),
+                                                                                 left=LValue(name='a', next_lvalue=None),
                                                                                  right=LValue(name='i',
-                                                                                              next=None)))),
-                                           LValue(name='a', next=None)])])
+                                                                                              next_lvalue=None)))),
+                                           LValue(name='a', next_lvalue=None)])])
             environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
-            result = program.evaluate(environment)
+            result = program.evaluate(Environment.empty())
             assert isinstance(result, IntegerValue)
             return result.integer
 
@@ -447,15 +447,15 @@ class TestOptimizingForLoops(unittest.TestCase):
             # adding this line creates more jitcodes in /tmp/usession-exploration-abrown/jitcodes which reduces the number of operations
             Parser('let var a := 0 in a end').parse()
 
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type_id=None, expression=IntegerValue(0))],
                           expressions=[Sequence(
                               expressions=[WhileImplementedFor(var='i', start=IntegerValue(1), end=IntegerValue(9),
-                                                               body=Assign(lvalue=LValue(name='a', next=None),
+                                                               body=Assign(lvalue=LValue(name='a', next_lvalue=None),
                                                                            expression=Subtract(
-                                                                               left=LValue(name='a', next=None),
+                                                                               left=LValue(name='a', next_lvalue=None),
                                                                                right=LValue(name='i',
-                                                                                            next=None)))),
-                                           LValue(name='a', next=None)])])
+                                                                                            next_lvalue=None)))),
+                                           LValue(name='a', next_lvalue=None)])])
             environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
             result = program.evaluate(environment)
             assert isinstance(result, IntegerValue)
@@ -532,15 +532,15 @@ class TestOptimizingForLoops(unittest.TestCase):
             # adding this line creates more jitcodes in /tmp/usession-exploration-abrown/jitcodes which reduces the number of operations
             Parser('let var a := 0 in a end').parse()
 
-            program = Let(declarations=[VariableDeclaration(name='a', type=None, exp=IntegerValue(0))],
+            program = Let(declarations=[VariableDeclaration(name='a', type_id=None, expression=IntegerValue(0))],
                           expressions=[Sequence(
                               expressions=[VirtualizedFor(var='i', start=IntegerValue(1), end=IntegerValue(9),
-                                                          body=Assign(lvalue=LValue(name='a', next=None),
+                                                          body=Assign(lvalue=LValue(name='a', next_lvalue=None),
                                                                       expression=Subtract(
-                                                                          left=LValue(name='a', next=None),
+                                                                          left=LValue(name='a', next_lvalue=None),
                                                                           right=LValue(name='i',
-                                                                                       next=None)))),
-                                           LValue(name='a', next=None)])])
+                                                                                       next_lvalue=None)))),
+                                           LValue(name='a', next_lvalue=None)])])
             environment = create_environment_with_natives()  # apparently RPython barfs if we just use Environment() here because NativeFunctionDeclaration.__init__ is never called so the flowspace does not know about the 'function' field
             result = program.evaluate(environment)
             assert isinstance(result, IntegerValue)
@@ -555,6 +555,7 @@ class TestOptimizingForLoops(unittest.TestCase):
             _immutable_ = True
 
             def __init__(self, names=None, values=None):
+                Environment.__init__(self)
                 self.names = names or {}
                 self.values = values or []
 

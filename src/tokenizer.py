@@ -25,8 +25,8 @@ class TokenError(Exception):
 class Tokenizer:
     # TODO make some of these immutable
 
-    def __init__(self, text, file=None):
-        self.file = file
+    def __init__(self, text, source_file=None):
+        self.file = source_file
         self.text = text
         self.length = len(text)
         self.offset = 0

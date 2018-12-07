@@ -1,7 +1,8 @@
 import os
 
 from src.ast import IntegerValue, FunctionParameter, TypeId, StringValue, \
-    NativeNoArgumentFunctionDeclaration, NativeOneArgumentFunctionDeclaration, NativeFunctionDeclaration
+    NativeNoArgumentFunctionDeclaration, NativeOneArgumentFunctionDeclaration, NativeFunctionDeclaration, Let, \
+    TypeDeclaration
 from src.environment import Environment
 
 try:
@@ -71,21 +72,30 @@ def tiger_stop_timer():
     return IntegerValue(total_time)
 
 
+def create_native_functions():
+    """Convenience method to add all native functions to the environment"""
+    string_type = TypeId('string')
+    integer_type = TypeId('int')
+    native_types = Let([TypeDeclaration('string', string_type), TypeDeclaration('int', integer_type)], [])
+    print_function = NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('message', string_type)],
+                                                          None, tiger_print)
+    time_go_function = NativeNoArgumentFunctionDeclaration('timeGo', integer_type, tiger_start_timer)
+    time_stop_function = NativeNoArgumentFunctionDeclaration('timeStop', integer_type, tiger_stop_timer)
+    return [native_types, print_function, time_go_function, time_stop_function]
+
+
 def create_environment_with_natives():
     """Convenience method to add all native functions to the environment"""
-    environment = Environment.empty().push(3)
+    environment = Environment.empty().push(4)
+    native_functions = create_native_functions()
+    for i in range(len(native_functions)):
+        environment.set(i, native_functions[i])
+    return environment  # TODO remove this
 
-    print_function = NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('string', TypeId('string'))],
-                                                          None, tiger_print)
-    environment.set((0, 0), print_function)
 
-    time_go_function = NativeNoArgumentFunctionDeclaration('timeGo', [], TypeId('int'), tiger_start_timer)
-    environment.set((0, 1), time_go_function)
+def create_empty_environment():
+    return Environment.empty()
 
-    time_stop_function = NativeNoArgumentFunctionDeclaration('timeStop', [], TypeId('int'), tiger_stop_timer)
-    environment.set((0, 2), time_stop_function)
-
-    return environment
 
 
 def list_native_environment_names(env):

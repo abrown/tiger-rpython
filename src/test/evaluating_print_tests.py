@@ -1,8 +1,7 @@
 import sys
 import unittest
 
-from src.ast import FunctionParameter, TypeId, IntegerValue, StringValue, \
-    NativeOneArgumentFunctionDeclaration
+from src.ast import FunctionParameter, TypeId, NativeOneArgumentFunctionDeclaration, Let, TypeDeclaration
 from src.environment import Environment
 from src.test.test_utilities import parse_file, list_test_files, get_file_name, read_file, OutputContainer
 
@@ -16,12 +15,12 @@ class TestEvaluatingPrintTests(unittest.TestCase):
 
 def generate_print_test(path):
     def test(self):
-        program = parse_file(path, ['print'])  # see addition of print below
+        native_types = Let([TypeDeclaration('string', TypeId('string')), TypeDeclaration('int', TypeId('int'))], [])
         stdout = OutputContainer()
-        env = Environment.empty().push(1)
-        env.set((0, 0), NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('s', TypeId('str'))], None,
-                                                             stdout.capture))
-
+        capture_stdout_function = NativeOneArgumentFunctionDeclaration('print', [FunctionParameter('s', TypeId('str'))],
+                                                                       None, stdout.capture)
+        program = parse_file(path, [native_types, capture_stdout_function])
+        env = Environment.empty()
         program.evaluate(env)
 
         expected = read_file(path.replace('.tig', '.out.bak'))

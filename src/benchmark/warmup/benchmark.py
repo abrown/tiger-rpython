@@ -1,9 +1,6 @@
 import logging
-import os
 import pickle
 from collections import OrderedDict
-
-import matplotlib.pyplot as plt
 
 from src.benchmark.extract import collect_files
 from src.benchmark.perf import run_command
@@ -14,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 PATH_TO_JIT_INTERPRETER = 'bin/tiger-interpreter'
 PATH_TO_BENCHMARKS = 'src/benchmark/suite-looped'
 PATH_TO_PICKLED_DATA = 'var/warmup.pkl'
-PATH_TO_PYPYLOG = 'jit:var/%s.log'
+PATH_TO_PYPYLOG = 'jit:var/%s-convoluted.log'
 
 # gather data
 benchmark_programs = collect_files(PATH_TO_BENCHMARKS, suffix='.tig')
