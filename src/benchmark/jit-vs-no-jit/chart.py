@@ -44,6 +44,9 @@ logging.info("Geometric mean of the speedup of C (O2) over JIT: %s",
 logging.info("Geometric mean of the speedup of JIT over non-JIT: %s",
              average_speedup(cycles(results['jit']), cycles(results['no-jit'])))
 
+# remove c-O2 from plot
+results.pop('c-O2', None)
+
 # draw plot
 
 # necessary for LaTex PGF plots,
@@ -89,8 +92,8 @@ fig.tight_layout()  # necessary to re-position axis labels
 
 if os.getenv('SAVE', 0):
     # save files
-    plt.savefig('var/jit-vs-no-jit.pdf')
-    plt.savefig('var/jit-vs-no-jit.pgf')
+    plt.savefig('var/jit-vs-no-jit-vs-c.pdf')
+    plt.savefig('var/jit-vs-no-jit-vs-c.pgf')
     # use this in LaTex, see http://sbillaudelle.de/2015/02/23/seamlessly-embedding-matplotlib-output-into-latex.html
 else:
     # display plot
