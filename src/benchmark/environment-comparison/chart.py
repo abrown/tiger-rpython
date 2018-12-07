@@ -40,15 +40,16 @@ benchmark_names = [extract_benchmark_name(cmd) for (cmd, _) in pickled_data[next
 logging.info("Found benchmark names in first result set: %s" % benchmark_names)
 
 # find the times used for normalizing all other times
-normalization_times = [extract_execution_time(results) for (_, results) in pickled_data['env-with-paths-unabstracted']]
-logging.info("Found times to normalize by in 'env-with-paths-unabstracted' result set: %s" % normalization_times)
+normalization_branch = 'env-embedded-in-ast'
+normalization_times = [extract_execution_time(results) for (_, results) in pickled_data[normalization_branch]]
+logging.info("Found times to normalize by in '%s' result set: %s", normalization_branch, normalization_times)
 
 # calculate average difference between environments
 for env, benchmarks in pickled_data.items():
     times = [extract_execution_time(results) for (_, results) in benchmarks]
     times_diff = [time / normalization_time for (time, normalization_time) in zip(times, normalization_times)]
     geometric_mean = reduce(lambda x, y: x * y, times_diff) ** (1.0 / len(times_diff))
-    logging.info("Geometric mean of the speedup of env-with-paths-unabstracted over %s: %s", env, geometric_mean)
+    logging.info("Geometric mean of the speedup of '%s' over %s: %s", normalization_branch, env, geometric_mean)
 
 # draw plot
 
@@ -85,11 +86,11 @@ for env, benchmarks in pickled_data.items():
     bar_offset += 1
 
 ax.set_xlabel('Benchmarks')
-ax.set_ylabel('Task time (normalized to unabstracted, lower is better)')
+ax.set_ylabel('Task time (normalized to embedded, lower is better)')
 ax.set_title('Benchmark Task Times by Environment Implementation')
 ax.set_xticks([index + bar_width * (len(pickled_data) - 1) / 2 for index in range(len(benchmark_names))])
 ax.set_xticklabels(benchmark_names)
-ax.legend()  # re-enable if we keep ax.bar(..., label='...')
+ax.legend(loc=2)  # re-enable if we keep ax.bar(..., label='...')
 fig.tight_layout()  # necessary to re-position axis labels
 
 if os.getenv('SAVE', 0):
